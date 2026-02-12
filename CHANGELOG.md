@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.3.1] - 2026-02-13
+
+### Fixed
+- Replaced MenuBar error `.alert` with an inline error panel to avoid popover-dismiss side effects.
+- Hardened Pomodoro focus-phase transition failure cleanup to reduce blocking-state mismatch risk.
+- Stabilized settings persistence by moving away from `@AppStorage` in `SettingsViewModel`.
+
+### Docs
+- Added v0.3.0 manual QA execution log.
+
 ## [0.3.0] - 2026-02-13
 
 ### Added
@@ -21,3 +31,10 @@ All notable changes to this project are documented in this file.
 - `xcodebuild -project FocusYou.xcodeproj -scheme FocusYou -configuration Debug -destination 'platform=macOS' test`
 - `./scripts/qa_focusyou_state.sh assert-helper-ready`
 - `./scripts/qa_focusyou_state.sh assert-clean`
+
+## [0.1.0] - 2026-02-13
+
+### Added
+- Initial menu bar app flow for focus timer start/stop.
+- Website/app blocking with hosts-based web blocking and app monitoring.
+- First-pass helper authorization flow and baseline UX updates.

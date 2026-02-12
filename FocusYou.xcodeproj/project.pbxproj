@@ -390,7 +390,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1600;
+				LastUpgradeCheck = 2620;
 			};
 			buildConfigurationList = 06CF28C3543A6183CB0F7D57 /* Build configuration list for PBXProject "FocusYou" */;
 			compatibilityVersion = "Xcode 14.0";
