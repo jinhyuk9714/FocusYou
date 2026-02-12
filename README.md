@@ -67,6 +67,24 @@ FocusYou/
 └── Resources/       # 에셋, 카테고리 프리셋 JSON
 ```
 
+## 수동 QA
+
+안정성 시나리오(시작/중지, 완료, 강제종료, 재부팅 복구) 점검:
+
+```bash
+./scripts/qa_focusyou_state.sh snapshot
+```
+
+핵심 상태 검증 명령:
+
+```bash
+./scripts/qa_focusyou_state.sh assert-blocked
+./scripts/qa_focusyou_state.sh assert-safetynet-armed
+./scripts/qa_focusyou_state.sh assert-recovered
+```
+
+상세 체크리스트는 `docs/manual-qa-checklist.md` 참고.
+
 ## 라이선스
 
 All rights reserved.
