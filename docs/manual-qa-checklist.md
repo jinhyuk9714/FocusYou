@@ -81,7 +81,7 @@ Expected:
 - App startup runs emergency cleanup.
 - Hosts markers are removed.
 - Indicator/backup files are removed after successful cleanup.
-- If cleanup fails, app shows an error alert and files remain for retry.
+- If cleanup fails, app shows an inline error panel and files remain for retry.
 
 ## Scenario 4: Reboot Recovery
 
@@ -145,7 +145,7 @@ sudo mv /usr/local/bin/focusyou-helper.disabled /usr/local/bin/focusyou-helper
 ./scripts/qa_focusyou_state.sh assert-helper-ready
 ```
 
-7. In app alert, click `다시 시도`, then verify:
+7. In app error panel, click `다시 시도`, then verify:
 
 ```bash
 ./scripts/qa_focusyou_state.sh assert-recovered

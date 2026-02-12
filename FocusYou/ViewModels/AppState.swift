@@ -495,7 +495,7 @@ final class AppState {
         focusState = .idle
     }
 
-    /// 차단 해제 재시도 (alert의 재시도 버튼에서 호출)
+    /// 차단 해제 재시도 (오류 UI의 재시도 버튼에서 호출)
     func retryBlockingDeactivation() async {
         guard canRetryBlockingDeactivation else { return }
 
@@ -505,8 +505,7 @@ final class AppState {
                 await NotificationService.shared.sendBlockingDeactivated()
             }
             isBlockingActive = false
-            canRetryBlockingDeactivation = false
-            errorMessage = nil
+            dismissError()
         } catch {
             logger.error("차단 해제 재시도 실패: \(error.localizedDescription)")
             isBlockingActive = true
@@ -515,6 +514,13 @@ final class AppState {
                 canRetryDeactivation: true
             )
         }
+    }
+
+    /// 인라인 에러 표시 닫기
+    func dismissError() {
+        showError = false
+        errorMessage = nil
+        canRetryBlockingDeactivation = false
     }
 
     /// 공통 에러 표시 헬퍼
