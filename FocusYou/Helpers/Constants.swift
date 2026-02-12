@@ -17,6 +17,18 @@ enum Constants {
         static let activeRefreshInterval: TimeInterval = 1.0
         /// 팝오버 닫힘 시 타이머 갱신 주기 (초)
         static let backgroundRefreshInterval: TimeInterval = 60.0
+
+        // MARK: - 뽀모도로
+
+        static let pomodoroFocusDefaultMinutes = 25
+        static let pomodoroShortBreakDefaultMinutes = 5
+        static let pomodoroLongBreakDefaultMinutes = 15
+        static let pomodoroCyclesDefault = 4
+
+        static let pomodoroFocusRange = 10...90
+        static let pomodoroShortBreakRange = 3...30
+        static let pomodoroLongBreakRange = 10...45
+        static let pomodoroCyclesRange = 2...8
     }
 
     // MARK: - 차단

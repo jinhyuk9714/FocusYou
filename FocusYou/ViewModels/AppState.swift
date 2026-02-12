@@ -18,8 +18,16 @@ final class AppState {
         case completed
     }
 
+    enum TimerMode: String, Sendable {
+        case free
+        case pomodoro
+    }
+
     private(set) var focusState: FocusState = .idle
     private(set) var isBlockingActive = false
+    private(set) var timerMode: TimerMode = .free
+    private(set) var currentPomodoroPhase: PomodoroEngine.Phase?
+    private(set) var pomodoroCycleProgressText = ""
 
     /// 현재 세션
     private(set) var currentSession: FocusSession?
@@ -32,11 +40,18 @@ final class AppState {
     // MARK: - 타이머
 
     let timer = FreeTimer()
+    private let pomodoroEngine = PomodoroEngine()
+    private var accumulatedPomodoroFocusDuration: TimeInterval = 0
 
     // MARK: - 메뉴바
 
     var menuBarIcon: String {
         isBlockingActive ? Constants.UI.menuBarIconActive : Constants.UI.menuBarIconIdle
+    }
+
+    var pomodoroPhaseTitle: String {
+        guard timerMode == .pomodoro, let phase = currentPomodoroPhase else { return "" }
+        return phase.type.displayName
     }
 
     // MARK: - Private
@@ -83,14 +98,22 @@ final class AppState {
         duration: TimeInterval,
         sites: [BlockedSite],
         apps: [BlockedApp],
-        modelContext: ModelContext
+        modelContext: ModelContext,
+        mode: TimerMode = .free,
+        pomodoroConfiguration: PomodoroConfiguration = .default
     ) async {
         guard focusState == .idle else {
             logger.warning("세션 시작 실패: 이미 진행 중")
             return
         }
 
-        logger.info("집중 세션 시작: \(Int(duration))초")
+        logger.info("집중 세션 시작: \(mode.rawValue, privacy: .public), \(Int(duration))초")
+
+        if mode == .pomodoro,
+           PomodoroEngine.buildPhases(configuration: pomodoroConfiguration).isEmpty {
+            presentError("뽀모도로 설정이 올바르지 않습니다.")
+            return
+        }
 
         do {
             // 1. 차단 활성화
@@ -110,12 +133,30 @@ final class AppState {
             isBlockingActive = !enabledDomains.isEmpty || !enabledBundleIds.isEmpty
 
             // 2. 타이머 시작
-            timer.start(duration: duration)
+            timerMode = mode
+            accumulatedPomodoroFocusDuration = 0
+            currentPomodoroPhase = nil
+            pomodoroCycleProgressText = ""
+
+            switch mode {
+            case .free:
+                timer.start(duration: duration)
+            case .pomodoro:
+                let firstPhase = pomodoroEngine.start(configuration: pomodoroConfiguration)
+                guard let firstPhase else { return }
+                currentPomodoroPhase = firstPhase
+                pomodoroCycleProgressText = "사이클 \(firstPhase.cycleIndex)/\(pomodoroConfiguration.cycles)"
+                timer.start(duration: firstPhase.duration)
+            }
 
             // 3. 세션 기록 생성
             let session = FocusSession(
-                timerMode: "free",
-                plannedDuration: Int(duration)
+                timerMode: mode.rawValue,
+                plannedDuration: plannedDuration(
+                    mode: mode,
+                    freeDuration: duration,
+                    pomodoroConfiguration: pomodoroConfiguration
+                )
             )
             modelContext.insert(session)
             currentSession = session
@@ -163,7 +204,7 @@ final class AppState {
         let wasBlockingActive = isBlockingActive
 
         // 타이머 정지
-        let elapsed = Int(timer.elapsedTime)
+        let elapsed = Int(sessionElapsedDuration)
         timer.stop()
 
         // 차단 해제
@@ -185,6 +226,7 @@ final class AppState {
         // 세션 기록 업데이트
         currentSession?.cancel(actualDuration: elapsed)
         currentSession = nil
+        endPomodoroIfNeeded()
 
         focusState = .idle
     }
@@ -192,12 +234,59 @@ final class AppState {
     // MARK: - 타이머 완료 처리
 
     private func handleTimerComplete() async {
-        logger.info("타이머 완료 → 세션 종료 처리")
+        switch timerMode {
+        case .free:
+            logger.info("자유 타이머 완료 → 세션 종료 처리")
+            await finalizeSessionAfterCompletion(
+                notificationDuration: timer.totalDuration,
+                actualDuration: Int(timer.totalDuration)
+            )
+        case .pomodoro:
+            await handlePomodoroPhaseCompletion()
+        }
+    }
+
+    private func handlePomodoroPhaseCompletion() async {
+        guard let completedPhase = currentPomodoroPhase else {
+            await finalizeSessionAfterCompletion(
+                notificationDuration: timer.totalDuration,
+                actualDuration: Int(timer.totalDuration)
+            )
+            return
+        }
+
+        logger.info("뽀모도로 페이즈 완료: \(completedPhase.type.rawValue, privacy: .public)")
+
+        if completedPhase.type == .focus {
+            accumulatedPomodoroFocusDuration += completedPhase.duration
+        }
+
+        if let nextPhase = pomodoroEngine.advancePhase() {
+            currentPomodoroPhase = nextPhase
+            pomodoroCycleProgressText = "사이클 \(nextPhase.cycleIndex)/\(pomodoroEngine.configuration.cycles)"
+
+            // completed 상태의 FreeTimer를 다음 페이즈 재시작을 위해 초기화
+            timer.reset()
+            timer.start(duration: nextPhase.duration)
+            focusState = .focusing
+            return
+        }
+
+        await finalizeSessionAfterCompletion(
+            notificationDuration: accumulatedPomodoroFocusDuration,
+            actualDuration: Int(accumulatedPomodoroFocusDuration)
+        )
+    }
+
+    private func finalizeSessionAfterCompletion(
+        notificationDuration: TimeInterval,
+        actualDuration: Int
+    ) async {
         let wasBlockingActive = isBlockingActive
 
         // 1. 완료 알림
         await NotificationService.shared.sendTimerCompleted(
-            duration: timer.totalDuration
+            duration: notificationDuration
         )
 
         // 2. 차단 해제
@@ -217,16 +306,56 @@ final class AppState {
         }
 
         // 3. 세션 기록
-        currentSession?.complete(actualDuration: Int(timer.totalDuration))
+        currentSession?.complete(actualDuration: actualDuration)
         currentSession = nil
+        endPomodoroIfNeeded()
 
         // 4. 상태 전환
         focusState = .completed
     }
 
+    private func plannedDuration(
+        mode: TimerMode,
+        freeDuration: TimeInterval,
+        pomodoroConfiguration: PomodoroConfiguration
+    ) -> Int {
+        switch mode {
+        case .free:
+            return Int(freeDuration)
+        case .pomodoro:
+            return Int(pomodoroConfiguration.plannedFocusDuration)
+        }
+    }
+
+    private var sessionElapsedDuration: TimeInterval {
+        switch timerMode {
+        case .free:
+            return timer.elapsedTime
+        case .pomodoro:
+            guard let currentPhase = currentPomodoroPhase else {
+                return accumulatedPomodoroFocusDuration
+            }
+            if currentPhase.type == .focus {
+                return accumulatedPomodoroFocusDuration + timer.elapsedTime
+            }
+            return accumulatedPomodoroFocusDuration
+        }
+    }
+
+    private func endPomodoroIfNeeded() {
+        if timerMode == .pomodoro {
+            pomodoroEngine.reset()
+        }
+        timerMode = .free
+        currentPomodoroPhase = nil
+        pomodoroCycleProgressText = ""
+        accumulatedPomodoroFocusDuration = 0
+    }
+
     /// 완료 상태에서 유휴로 복귀
     func resetToIdle() {
         timer.reset()
+        endPomodoroIfNeeded()
         focusState = .idle
     }
 
