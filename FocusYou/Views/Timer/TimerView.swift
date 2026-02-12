@@ -140,24 +140,63 @@ struct FocusingContentView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            countdownDisplay
-            progressBar
-            statusText
-            controlButtons
-        }
-        .alert(
-            "집중을 중지하시겠습니까?",
-            isPresented: $viewModel.showCancelConfirmation
-        ) {
-            Button("계속 집중하기", role: .cancel) {}
-            Button("중지", role: .destructive) {
-                Task {
-                    await appState.stopSession(modelContext: modelContext)
-                }
+            if viewModel.showCancelConfirmation {
+                stopConfirmation
+            } else {
+                countdownDisplay
+                progressBar
+                statusText
+                controlButtons
             }
-        } message: {
-            Text("차단이 해제되고 세션이 기록됩니다.")
         }
+        .animation(.easeInOut(duration: 0.2), value: viewModel.showCancelConfirmation)
+    }
+
+    // MARK: - 중지 확인 (인라인)
+
+    private var stopConfirmation: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 36))
+                .foregroundStyle(ThemeManager.shared.stopButton)
+
+            Text("집중을 중지하시겠습니까?")
+                .font(.headline)
+
+            Text("차단이 해제되고 세션이 기록됩니다.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            HStack(spacing: 12) {
+                Button {
+                    viewModel.showCancelConfirmation = false
+                } label: {
+                    Text("계속 집중하기")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(ThemeManager.shared.primary.opacity(0.15))
+                        .foregroundStyle(ThemeManager.shared.primary)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    Task {
+                        await appState.stopSession(modelContext: modelContext)
+                    }
+                } label: {
+                    Text("중지")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(ThemeManager.shared.stopButton)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, 8)
     }
 
     private var countdownDisplay: some View {

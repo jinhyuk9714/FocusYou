@@ -30,10 +30,18 @@ enum Constants {
         static let beginMarker = "# === Focus You BEGIN ==="
         /// 차단 종료 마커
         static let endMarker = "# === Focus You END ==="
-        /// 리다이렉트 IP
-        static let redirectIP = "127.0.0.1"
+        /// 리다이렉트 IP (IPv4)
+        static let redirectIP = "0.0.0.0"
+        /// 리다이렉트 IP (IPv6 loopback)
+        static let redirectIPv6 = "::1"
+        /// 리다이렉트 IP (IPv6 link-local)
+        static let redirectIPv6LinkLocal = "fe80::1%lo0"
         /// 활성 상태 표시 파일
         static let activeIndicatorPath = "/tmp/focusyou.active"
+        /// 영구 헬퍼 스크립트 (비밀번호 없는 hosts 변경용)
+        static let helperPath = "/usr/local/bin/focusyou-helper"
+        /// sudoers 엔트리 (헬퍼 NOPASSWD 허용)
+        static let sudoersPath = "/etc/sudoers.d/focusyou"
     }
 
     // MARK: - 앱 정보

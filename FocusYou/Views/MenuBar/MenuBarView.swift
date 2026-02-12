@@ -22,17 +22,20 @@ struct MenuBarView: View {
             Divider()
 
             // 상태별 메인 콘텐츠
-            switch appState.focusState {
-            case .idle:
-                IdleContentView(
-                    sites: enabledSites,
-                    apps: enabledApps
-                )
-            case .focusing, .paused:
-                FocusingContentView()
-            case .completed:
-                CompletedContentView()
+            Group {
+                switch appState.focusState {
+                case .idle:
+                    IdleContentView(
+                        sites: enabledSites,
+                        apps: enabledApps
+                    )
+                case .focusing, .paused:
+                    FocusingContentView()
+                case .completed:
+                    CompletedContentView()
+                }
             }
+            .animation(.easeInOut(duration: 0.25), value: appState.focusState)
 
             Divider()
 
@@ -59,6 +62,8 @@ struct MenuBarView: View {
             Spacer()
             blockingSummary
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Focus You\(appState.isBlockingActive ? ", 차단 활성화 상태" : "")")
     }
 
     @ViewBuilder
@@ -79,6 +84,7 @@ struct MenuBarView: View {
         HStack {
             Button {
                 openWindow(id: "block-list")
+                NSApp.activate(ignoringOtherApps: true)
             } label: {
                 Label("차단 목록", systemImage: "list.bullet.rectangle")
             }
@@ -89,6 +95,7 @@ struct MenuBarView: View {
 
             Button {
                 openWindow(id: "settings")
+                NSApp.activate(ignoringOtherApps: true)
             } label: {
                 Label("설정", systemImage: "gearshape")
             }

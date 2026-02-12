@@ -213,4 +213,29 @@ final class BlockListViewModel {
 
         logger.info("프리셋 적용 완료: \(category)")
     }
+
+    /// 카테고리 프리셋 제거
+    func removePreset(category: String, modelContext: ModelContext) {
+        // 해당 카테고리의 사이트 제거
+        let sitePredicate = #Predicate<BlockedSite> { $0.category == category }
+        let siteDescriptor = FetchDescriptor<BlockedSite>(predicate: sitePredicate)
+
+        if let sites = try? modelContext.fetch(siteDescriptor) {
+            for site in sites {
+                modelContext.delete(site)
+            }
+        }
+
+        // 해당 카테고리의 앱 제거
+        let appPredicate = #Predicate<BlockedApp> { $0.category == category }
+        let appDescriptor = FetchDescriptor<BlockedApp>(predicate: appPredicate)
+
+        if let apps = try? modelContext.fetch(appDescriptor) {
+            for app in apps {
+                modelContext.delete(app)
+            }
+        }
+
+        logger.info("프리셋 제거 완료: \(category)")
+    }
 }

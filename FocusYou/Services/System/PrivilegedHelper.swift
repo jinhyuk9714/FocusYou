@@ -17,13 +17,15 @@ actor PrivilegedHelper {
     /// 블로킹 호출을 백그라운드 스레드에서 실행하여 actor 데드락 방지
     func executeAsAdmin(script: String) async throws -> String {
         logger.info("관리자 권한으로 스크립트 실행 요청")
+        logger.debug("실행할 스크립트: \(script)")
 
-        // 스크립트 내 특수문자 이스케이프
+        // 스크립트 내 특수문자 이스케이프 (AppleScript 문자열 내에서 안전하게)
         let escapedScript = script
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
 
         let appleScript = "do shell script \"\(escapedScript)\" with administrator privileges"
+        logger.debug("AppleScript: \(appleScript)")
 
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async { [logger] in
@@ -75,16 +77,9 @@ actor PrivilegedHelper {
     func writeFileAsRootAndFlushDNS(content: String, to path: String) async throws {
         logger.info("관리자 권한으로 파일 쓰기 + DNS 플러시: \(path)")
 
-        // 임시 파일에 내용 쓰기
-        let tempPath = FileManager.default.temporaryDirectory
-            .appendingPathComponent("focusyou_temp_\(UUID().uuidString)")
-            .path
+        let tempPath = writeTempFile(content: content)
 
-        guard FileManager.default.createFile(
-            atPath: tempPath,
-            contents: content.data(using: .utf8)
-        ) else {
-            logger.error("임시 파일 생성 실패")
+        guard let tempPath else {
             throw FocusYouError.hostsFileWriteFailed
         }
 
@@ -94,7 +89,144 @@ actor PrivilegedHelper {
 
         // hosts 파일 쓰기 + DNS 플러시를 하나의 admin 스크립트로 통합
         // → 비밀번호 다이얼로그 1회만 등장
-        let script = "cp \(tempPath) \(path) && chmod 644 \(path) && dscacheutil -flushcache && killall -HUP mDNSResponder"
+        // macOS 26+: HUP 후 SIGTERM으로 mDNSResponder 완전 재시작 (launchd 자동 복구)
+        let script = "cp \"\(tempPath)\" \"\(path)\" && chmod 644 \"\(path)\" && dscacheutil -flushcache && killall -HUP mDNSResponder && sleep 1 && killall mDNSResponder 2>/dev/null; true"
         _ = try await executeAsAdmin(script: script)
+    }
+
+    // MARK: - 영구 헬퍼 (비밀번호 최초 1회)
+
+    /// 헬퍼 스크립트 + sudoers 엔트리 존재 확인 → 없으면 admin 호출로 설치
+    /// 최초 1회만 비밀번호 필요, 이후 영구 사용
+    func ensureHelperInstalled() async throws {
+        let helperPath = Constants.Blocking.helperPath
+        let sudoersPath = Constants.Blocking.sudoersPath
+
+        // 이미 설치된 경우 스킵
+        if FileManager.default.fileExists(atPath: helperPath),
+           FileManager.default.fileExists(atPath: sudoersPath) {
+            logger.info("헬퍼 이미 설치됨, 스킵")
+            return
+        }
+
+        logger.info("헬퍼 미설치 → admin 권한으로 설치 시작")
+
+        let username = ProcessInfo.processInfo.userName
+
+        // 1. 헬퍼 스크립트 → 임시 파일
+        let helperScript = """
+        #!/bin/bash
+        [ -f "$1" ] || exit 1
+        cp "$1" /etc/hosts
+        chmod 644 /etc/hosts
+        dscacheutil -flushcache
+        killall -HUP mDNSResponder
+        sleep 1
+        killall mDNSResponder 2>/dev/null; true
+        """
+        guard let tempHelperPath = writeTempFile(content: helperScript) else {
+            throw FocusYouError.hostsFileWriteFailed
+        }
+
+        // 2. sudoers 엔트리 → 임시 파일
+        let sudoersContent = "\(username) ALL=(ALL) NOPASSWD: \(helperPath)\n"
+        guard let tempSudoersPath = writeTempFile(content: sudoersContent) else {
+            try? FileManager.default.removeItem(atPath: tempHelperPath)
+            throw FocusYouError.hostsFileWriteFailed
+        }
+
+        defer {
+            try? FileManager.default.removeItem(atPath: tempHelperPath)
+            try? FileManager.default.removeItem(atPath: tempSudoersPath)
+        }
+
+        // 단일 admin 스크립트: 헬퍼 + sudoers 설치
+        let script = [
+            "mkdir -p /usr/local/bin",
+            "cp \"\(tempHelperPath)\" \"\(helperPath)\"",
+            "chown root:wheel \"\(helperPath)\"",
+            "chmod 755 \"\(helperPath)\"",
+            "cp \"\(tempSudoersPath)\" \"\(sudoersPath)\"",
+            "chmod 440 \"\(sudoersPath)\"",
+            "chown root:wheel \"\(sudoersPath)\"",
+            "visudo -c -f \"\(sudoersPath)\" || rm -f \"\(sudoersPath)\"",
+        ].joined(separator: " && ")
+
+        _ = try await executeAsAdmin(script: script)
+        logger.info("헬퍼 설치 완료 (이후 비밀번호 불필요)")
+    }
+
+    /// 헬퍼를 통해 비밀번호 없이 hosts 파일 변경 + DNS 플러시
+    /// content를 임시 파일에 쓰고 `sudo -n focusyou-helper tempfile` 실행
+    func writeHostsViaHelper(content: String) async throws {
+        logger.info("헬퍼를 통해 hosts 파일 변경 시도")
+
+        let helperPath = Constants.Blocking.helperPath
+
+        guard let tempPath = writeTempFile(content: content) else {
+            throw FocusYouError.hostsFileWriteFailed
+        }
+
+        defer {
+            try? FileManager.default.removeItem(atPath: tempPath)
+        }
+
+        try await runSudoNonInteractive(arguments: [helperPath, tempPath])
+        logger.info("헬퍼를 통해 hosts 파일 변경 완료")
+    }
+
+    /// sudo -n (비밀번호 없이) 명령 실행
+    /// 실패 시 throw → 호출측에서 admin fallback 처리
+    private func runSudoNonInteractive(arguments: [String]) async throws {
+        return try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async { [logger] in
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/usr/bin/sudo")
+                process.arguments = ["-n"] + arguments
+
+                let errorPipe = Pipe()
+                process.standardError = errorPipe
+                process.standardOutput = FileHandle.nullDevice
+
+                do {
+                    try process.run()
+                } catch {
+                    logger.error("sudo 프로세스 실행 실패: \(error.localizedDescription)")
+                    continuation.resume(throwing: FocusYouError.hostsFileWriteFailed)
+                    return
+                }
+
+                process.waitUntilExit()
+
+                if process.terminationStatus != 0 {
+                    let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                    let errorString = String(data: errorData, encoding: .utf8) ?? ""
+                    logger.warning("sudo -n 실패 (종료 코드: \(process.terminationStatus)): \(errorString)")
+                    continuation.resume(throwing: FocusYouError.hostsFileWriteFailed)
+                    return
+                }
+
+                continuation.resume()
+            }
+        }
+    }
+
+    // MARK: - Private
+
+    /// 임시 파일 생성 헬퍼
+    private func writeTempFile(content: String) -> String? {
+        let tempPath = FileManager.default.temporaryDirectory
+            .appendingPathComponent("focusyou_temp_\(UUID().uuidString)")
+            .path
+
+        guard FileManager.default.createFile(
+            atPath: tempPath,
+            contents: content.data(using: .utf8)
+        ) else {
+            logger.error("임시 파일 생성 실패: \(tempPath)")
+            return nil
+        }
+
+        return tempPath
     }
 }

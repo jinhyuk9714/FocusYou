@@ -2,7 +2,8 @@ import Foundation
 import os
 
 // MARK: - hosts 파일 기반 웹사이트 차단기
-// /etc/hosts에 127.0.0.1 리다이렉트 추가로 웹사이트 차단
+// /etc/hosts에 리다이렉트 추가로 웹사이트 차단
+// 영구 헬퍼 스크립트를 통해 비밀번호 없이 동작
 
 actor HostsFileBlocker: WebsiteBlocker {
     private let hostsFileManager = HostsFileManager.shared
@@ -21,17 +22,26 @@ actor HostsFileBlocker: WebsiteBlocker {
             return
         }
 
-        // 1. hosts 파일 백업
+        // 1. hosts 파일 백업 (클린 상태 저장)
         try await hostsFileManager.backupHostsFile()
 
         // 2. 차단 내용 생성
         let newContent = try await hostsFileManager.buildBlockedContent(domains: domains)
 
-        // 3. 관리자 권한으로 hosts 파일 쓰기 + DNS 플러시 (단일 admin 호출)
-        try await privilegedHelper.writeFileAsRootAndFlushDNS(
-            content: newContent,
-            to: Constants.Blocking.hostsFilePath
-        )
+        // 3. 헬퍼 설치 확인 (최초 1회만 비밀번호)
+        try await privilegedHelper.ensureHelperInstalled()
+
+        // 4. 헬퍼를 통해 hosts 변경 (비밀번호 불필요)
+        do {
+            try await privilegedHelper.writeHostsViaHelper(content: newContent)
+        } catch {
+            // Fallback: 관리자 권한으로 직접 쓰기
+            logger.warning("헬퍼 실패, admin fallback: \(error.localizedDescription)")
+            try await privilegedHelper.writeFileAsRootAndFlushDNS(
+                content: newContent,
+                to: Constants.Blocking.hostsFilePath
+            )
+        }
 
         logger.info("웹사이트 차단 활성화 완료")
     }
@@ -39,16 +49,24 @@ actor HostsFileBlocker: WebsiteBlocker {
     func deactivate() async throws {
         logger.info("웹사이트 차단 해제 시작")
 
-        // 1. 마커 구간 제거된 내용 생성
         let cleanContent = try await hostsFileManager.buildCleanContent()
 
-        // 2. 관리자 권한으로 hosts 파일 쓰기 + DNS 플러시 (단일 admin 호출)
+        // 헬퍼를 통해 비밀번호 없이 해제 시도
+        do {
+            try await privilegedHelper.writeHostsViaHelper(content: cleanContent)
+            logger.info("헬퍼를 통해 웹사이트 차단 해제 완료")
+            return
+        } catch {
+            logger.warning("헬퍼 해제 실패, admin fallback: \(error.localizedDescription)")
+        }
+
+        // Fallback: 관리자 권한으로 해제 (비밀번호 필요)
         try await privilegedHelper.writeFileAsRootAndFlushDNS(
             content: cleanContent,
             to: Constants.Blocking.hostsFilePath
         )
 
-        logger.info("웹사이트 차단 해제 완료")
+        logger.info("웹사이트 차단 해제 완료 (admin fallback)")
     }
 
     func isActive() async -> Bool {

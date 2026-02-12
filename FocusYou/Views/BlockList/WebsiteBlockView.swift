@@ -29,6 +29,7 @@ struct WebsiteBlockView: View {
         HStack {
             TextField("example.com", text: $viewModel.newWebsiteURL)
                 .textFieldStyle(.roundedBorder)
+                .accessibilityLabel("차단할 웹사이트 주소 입력")
                 .onSubmit {
                     viewModel.addWebsite(modelContext: modelContext)
                 }
@@ -64,19 +65,48 @@ struct WebsiteBlockView: View {
     }
 
     private func siteRow(_ site: BlockedSite) -> some View {
-        HStack {
-            Toggle(isOn: Bindable(site).isEnabled) {
-                VStack(alignment: .leading) {
-                    Text(site.domain)
-                        .font(.body)
-                    if let category = site.category {
-                        Text(category)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+        HStack(spacing: 10) {
+            // 사이트 아이콘
+            Image(systemName: "globe")
+                .font(.system(size: 14))
+                .foregroundStyle(site.isEnabled ? ThemeManager.shared.primary : .secondary)
+                .frame(width: 24, height: 24)
+
+            // 도메인 + 카테고리
+            VStack(alignment: .leading, spacing: 2) {
+                Text(site.domain)
+                    .font(.body)
+                    .foregroundStyle(site.isEnabled ? .primary : .secondary)
+                if let category = site.category {
+                    Text(category)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
             }
+
+            Spacer()
+
+            // 삭제 버튼
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    viewModel.deleteSites([site], modelContext: modelContext)
+                }
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 16))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(site.domain) 삭제")
+
+            // 활성/비활성 토글 (스위치)
+            Toggle("", isOn: Bindable(site).isEnabled)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.small)
         }
+        .padding(.vertical, 2)
     }
 }
 

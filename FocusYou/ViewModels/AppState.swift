@@ -87,11 +87,17 @@ final class AppState {
             let enabledDomains = sites.filter(\.isEnabled).map(\.domain)
             let enabledBundleIds = apps.filter(\.isEnabled).map(\.bundleId)
 
+            logger.info("차단 대상: 사이트 \(enabledDomains.count)개, 앱 \(enabledBundleIds.count)개")
+
+            if enabledDomains.isEmpty && enabledBundleIds.isEmpty {
+                logger.warning("차단 목록이 비어있음 — 차단 없이 타이머만 시작")
+            }
+
             try await BlockingCoordinator.shared.activateBlocking(
                 domains: enabledDomains,
                 appBundleIds: enabledBundleIds
             )
-            isBlockingActive = true
+            isBlockingActive = !enabledDomains.isEmpty || !enabledBundleIds.isEmpty
 
             // 2. 타이머 시작
             timer.start(duration: duration)

@@ -88,13 +88,34 @@ actor BlockingCoordinator {
     }
 
     /// 긴급 정리 (앱 시작 시 stale 마커 감지용)
+    /// 활성 표시 파일이 있을 때만 실행
+    /// 헬퍼를 통해 비밀번호 없이 복구 시도, 실패 시 admin fallback
     func emergencyCleanup() async {
-        logger.warning("긴급 정리 수행")
+        guard FileManager.default.fileExists(atPath: Constants.Blocking.activeIndicatorPath) else {
+            return
+        }
 
-        if await HostsFileManager.shared.hasActiveBlocking() {
+        logger.warning("긴급 정리 수행 (활성 표시 파일 감지)")
+
+        // hosts 파일에 차단 마커가 있는 경우에만 복구
+        guard await HostsFileManager.shared.hasActiveBlocking() else {
+            logger.info("긴급 정리: 차단 마커 없음, 표시 파일만 제거")
+            removeSafetyNet()
+            state = .idle
+            return
+        }
+
+        // 헬퍼를 통해 비밀번호 없이 복구 시도
+        do {
+            let cleanContent = try await HostsFileManager.shared.buildCleanContent()
+            try await PrivilegedHelper.shared.writeHostsViaHelper(content: cleanContent)
+            logger.info("긴급 정리: 헬퍼를 통해 복원 완료")
+        } catch {
+            logger.warning("헬퍼 복구 실패, admin fallback 시도: \(error.localizedDescription)")
+            // Fallback: 기존 방식 (비밀번호 필요)
             do {
                 try await websiteBlocker.deactivate()
-                logger.info("긴급 정리: hosts 파일 복원 완료")
+                logger.info("긴급 정리: hosts 파일 복원 완료 (admin)")
             } catch {
                 logger.error("긴급 정리 실패: \(error.localizedDescription)")
             }
@@ -117,6 +138,10 @@ actor BlockingCoordinator {
         )
 
         // LaunchAgent plist 생성
+        // 부팅 시 활성 표시 파일이 있으면 헬퍼로 hosts 복구 시도
+        let helperPath = Constants.Blocking.helperPath
+        let backupPath = Constants.Blocking.hostsBackupPath
+        let activeIndicatorPath = Constants.Blocking.activeIndicatorPath
         let plistContent = """
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -128,7 +153,7 @@ actor BlockingCoordinator {
             <array>
                 <string>/bin/bash</string>
                 <string>-c</string>
-                <string>if [ -f \(Constants.Blocking.activeIndicatorPath) ]; then sed -i '' '/\(Constants.Blocking.beginMarker.replacingOccurrences(of: " ", with: "\\\\ "))/,/\(Constants.Blocking.endMarker.replacingOccurrences(of: " ", with: "\\\\ "))/d' /etc/hosts; dscacheutil -flushcache; rm -f \(Constants.Blocking.activeIndicatorPath); fi</string>
+                <string>if [ -f \(activeIndicatorPath) ] &amp;&amp; [ -f \(backupPath) ]; then sudo -n \(helperPath) \(backupPath) 2>/dev/null; fi; rm -f \(activeIndicatorPath)</string>
             </array>
             <key>RunAtLoad</key>
             <true/>

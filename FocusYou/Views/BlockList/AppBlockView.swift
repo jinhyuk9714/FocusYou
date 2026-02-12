@@ -8,6 +8,7 @@ struct AppBlockView: View {
     @Query private var blockedApps: [BlockedApp]
     @State private var viewModel = BlockListViewModel()
     @State private var installedApps: [BlockListViewModel.InstalledApp] = []
+    @State private var isLoading = true
 
     private var blockedBundleIds: Set<String> {
         Set(blockedApps.map(\.bundleId))
@@ -17,11 +18,26 @@ struct AppBlockView: View {
         VStack(spacing: 12) {
             TextField("앱 검색...", text: $viewModel.appSearchText)
                 .textFieldStyle(.roundedBorder)
+                .accessibilityLabel("설치된 앱 검색")
 
-            appList
+            if isLoading {
+                ProgressView("앱 목록 불러오는 중...")
+                    .frame(maxHeight: .infinity)
+            } else if filteredApps.isEmpty {
+                ContentUnavailableView(
+                    viewModel.appSearchText.isEmpty ? "설치된 앱 없음" : "검색 결과 없음",
+                    systemImage: "app.dashed",
+                    description: Text(viewModel.appSearchText.isEmpty
+                        ? "차단할 수 있는 앱이 없습니다"
+                        : "'\(viewModel.appSearchText)' 검색 결과가 없습니다")
+                )
+            } else {
+                appList
+            }
         }
         .task {
             installedApps = viewModel.scanInstalledApps()
+            isLoading = false
         }
     }
 
@@ -50,9 +66,12 @@ struct AppBlockView: View {
             Image(nsImage: app.icon)
                 .resizable()
                 .frame(width: 28, height: 28)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .opacity(isBlocked ? 1.0 : 0.6)
 
             Text(app.name)
                 .font(.body)
+                .foregroundStyle(isBlocked ? .primary : .secondary)
 
             Spacer()
 
@@ -67,7 +86,10 @@ struct AppBlockView: View {
                 }
             ))
             .labelsHidden()
+            .toggleStyle(.switch)
+            .controlSize(.small)
         }
+        .padding(.vertical, 2)
         .accessibilityLabel("\(app.name), \(isBlocked ? "차단 중" : "차단 안 함")")
     }
 }

@@ -67,9 +67,13 @@ actor HostsFileManager {
             guard !normalized.isEmpty else { continue }
 
             // 도메인 자체와 www 서브도메인 모두 차단
-            blockEntries.append("\(redirectIP) \(normalized)")
-            if !normalized.hasPrefix("www.") {
-                blockEntries.append("\(redirectIP) www.\(normalized)")
+            // IPv4 + IPv6 loopback + IPv6 link-local 3중 차단 (macOS IPv6 우선 해석 대응)
+            // TAB 구분자 사용 (macOS hosts 파일 기본 형식)
+            let targets = normalized.hasPrefix("www.") ? [normalized] : [normalized, "www.\(normalized)"]
+            for target in targets {
+                blockEntries.append("\(redirectIP)\t\(target)")
+                blockEntries.append("\(Constants.Blocking.redirectIPv6)\t\(target)")
+                blockEntries.append("\(Constants.Blocking.redirectIPv6LinkLocal)\t\(target)")
             }
         }
 
