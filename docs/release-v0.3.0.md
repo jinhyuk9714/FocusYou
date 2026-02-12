@@ -36,3 +36,5 @@ v0.3.0 introduces Pomodoro workflow and visual timer improvements while preservi
 ```
 
 Detailed steps: `docs/manual-qa-checklist.md`
+
+QA execution log: `docs/qa-v0.3.0-2026-02-13.md`
