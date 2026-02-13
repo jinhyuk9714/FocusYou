@@ -26,6 +26,9 @@ struct MainDashboardView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Constants.Design.spacingXL) {
                 header
+                if appState.showError {
+                    dashboardErrorPanel
+                }
                 heroCard
                 todayStatsRow
                 quickActionsBar
@@ -34,6 +37,47 @@ struct MainDashboardView: View {
             .padding(Constants.Design.spacingXL)
         }
         .background(themeManager.background)
+    }
+
+    // MARK: - 에러 패널
+
+    private var dashboardErrorPanel: some View {
+        VStack(alignment: .leading, spacing: Constants.Design.spacingMD) {
+            Label("오류", systemImage: "exclamationmark.triangle.fill")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(themeManager.stopButton)
+
+            Text(appState.errorMessage ?? "알 수 없는 오류가 발생했습니다.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: Constants.Design.spacingSM) {
+                if appState.canRetryBlockingDeactivation {
+                    Button {
+                        Task {
+                            await appState.retryBlockingDeactivation()
+                        }
+                    } label: {
+                        Text("다시 시도")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .primaryActionStyle(color: themeManager.stopButton)
+                }
+
+                Button {
+                    appState.dismissError()
+                } label: {
+                    Text("닫기")
+                        .frame(maxWidth: .infinity)
+                }
+                .secondaryActionStyle(color: .secondary)
+            }
+        }
+        .frostedCard()
+        .overlay(
+            RoundedRectangle(cornerRadius: Constants.Design.cornerLG)
+                .stroke(themeManager.stopButton.opacity(0.15), lineWidth: 0.5)
+        )
     }
 
     // MARK: - 헤더
