@@ -133,7 +133,7 @@ enum Constants {
         static let showMenuBarTimeDefault = true
         static let playCompletionSoundDefault = true
         static let showBlockedAppNotificationDefault = true
-        static let strictBrowserBlockingDefault = true
+        static let strictBrowserBlockingDefault = false
         static let selectedThemeIDDefault = "crimson-focus"
         static let debugFastTimerEnabledDefault = false
         static let debugSecondsPerMinuteDefault = 5.0
