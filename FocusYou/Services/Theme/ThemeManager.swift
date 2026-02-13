@@ -38,7 +38,27 @@ final class ThemeManager {
     var primary: Color { Color(hex: selectedTheme.primaryHex) }
     var secondary: Color { Color(hex: selectedTheme.secondaryHex) }
     var accent: Color { Color(hex: selectedTheme.accentHex) }
-    var background: Color { Color(hex: selectedTheme.backgroundHex) }
+
+    /// 시스템 외관에 따라 라이트/다크 배경을 자동 전환
+    var background: Color {
+        let lightHex = selectedTheme.backgroundHex
+        let darkHex = selectedTheme.backgroundDarkHex ?? "#1C1C1E"
+        return Color(nsColor: NSColor(name: nil) { appearance in
+            let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            return NSColor(isDark ? Color(hex: darkHex) : Color(hex: lightHex))
+        })
+    }
+
+    /// 라이트 전용 배경 (명시적으로 필요할 때)
+    var backgroundLight: Color { Color(hex: selectedTheme.backgroundHex) }
+
+    /// 다크 전용 배경 (명시적으로 필요할 때)
+    var backgroundDark: Color {
+        if let darkHex = selectedTheme.backgroundDarkHex {
+            return Color(hex: darkHex)
+        }
+        return Color(hex: "#1C1C1E")
+    }
     var startButton: Color { primary }
     var stopButton: Color { Color(hex: selectedTheme.stopHex) }
     var pauseButton: Color { accent }
@@ -46,6 +66,26 @@ final class ThemeManager {
     var completed: Color { secondary }
     var textPrimary: Color { .primary }
     var textSecondary: Color { .secondary }
+
+    // MARK: - 파생 스타일
+
+    /// 프라이머리 그라디언트
+    var primaryGradient: LinearGradient {
+        LinearGradient(
+            colors: [primary, primary.opacity(0.85)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    /// 세컨더리 그라디언트
+    var secondaryGradient: LinearGradient {
+        LinearGradient(
+            colors: [secondary, secondary.opacity(0.85)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
 
     init(defaults: UserDefaults = .standard, bundle: Bundle = .main) {
         self.defaults = defaults

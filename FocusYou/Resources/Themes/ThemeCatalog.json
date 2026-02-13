@@ -6,7 +6,8 @@
     "secondaryHex": "#2D6A4F",
     "accentHex": "#457B9D",
     "stopHex": "#D62828",
-    "backgroundHex": "#F7F9FC"
+    "backgroundHex": "#F7F9FC",
+    "backgroundDarkHex": "#1C1C1E"
   },
   {
     "id": "ocean-pulse",
@@ -15,7 +16,8 @@
     "secondaryHex": "#2A9D8F",
     "accentHex": "#48CAE4",
     "stopHex": "#C1121F",
-    "backgroundHex": "#EEF7FB"
+    "backgroundHex": "#EEF7FB",
+    "backgroundDarkHex": "#1A1E23"
   },
   {
     "id": "sunset-paper",
@@ -24,7 +26,8 @@
     "secondaryHex": "#06D6A0",
     "accentHex": "#FFD166",
     "stopHex": "#D90429",
-    "backgroundHex": "#FFF8F1"
+    "backgroundHex": "#FFF8F1",
+    "backgroundDarkHex": "#221C1A"
   },
   {
     "id": "forest-studio",
@@ -33,7 +36,8 @@
     "secondaryHex": "#52796F",
     "accentHex": "#84A98C",
     "stopHex": "#BC4749",
-    "backgroundHex": "#F3F8F5"
+    "backgroundHex": "#F3F8F5",
+    "backgroundDarkHex": "#1A201D"
   },
   {
     "id": "midnight-signal",
@@ -42,7 +46,8 @@
     "secondaryHex": "#8338EC",
     "accentHex": "#FFBE0B",
     "stopHex": "#E63946",
-    "backgroundHex": "#F2F5FF"
+    "backgroundHex": "#F2F5FF",
+    "backgroundDarkHex": "#191B24"
   },
   {
     "id": "terracotta-desk",
@@ -51,7 +56,8 @@
     "secondaryHex": "#6D597A",
     "accentHex": "#F4A261",
     "stopHex": "#9D0208",
-    "backgroundHex": "#FFF4EE"
+    "backgroundHex": "#FFF4EE",
+    "backgroundDarkHex": "#221B18"
   },
   {
     "id": "mint-notebook",
@@ -60,7 +66,8 @@
     "secondaryHex": "#76C893",
     "accentHex": "#B5E48C",
     "stopHex": "#BA181B",
-    "backgroundHex": "#F2FCFA"
+    "backgroundHex": "#F2FCFA",
+    "backgroundDarkHex": "#1A2220"
   },
   {
     "id": "amber-sprint",
@@ -69,7 +76,8 @@
     "secondaryHex": "#2EC4B6",
     "accentHex": "#E71D36",
     "stopHex": "#A4161A",
-    "backgroundHex": "#FFF8ED"
+    "backgroundHex": "#FFF8ED",
+    "backgroundDarkHex": "#221E18"
   },
   {
     "id": "slate-focus",
@@ -78,7 +86,8 @@
     "secondaryHex": "#4D908E",
     "accentHex": "#90E0EF",
     "stopHex": "#D00000",
-    "backgroundHex": "#F4F7FB"
+    "backgroundHex": "#F4F7FB",
+    "backgroundDarkHex": "#1B1D22"
   },
   {
     "id": "rose-lab",
@@ -87,6 +96,7 @@
     "secondaryHex": "#8F2D56",
     "accentHex": "#FFBC42",
     "stopHex": "#B00020",
-    "backgroundHex": "#FFF3F7"
+    "backgroundHex": "#FFF3F7",
+    "backgroundDarkHex": "#221A1D"
   }
 ]

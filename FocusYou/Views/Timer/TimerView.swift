@@ -1,19 +1,20 @@
 import SwiftUI
 import SwiftData
 
-// MARK: - 유휴 상태 콘텐츠 (타이머 설정 + 시작 버튼)
+// MARK: - 유휴 상태 콘텐츠 (v0.5 리디자인)
 
 struct IdleContentView: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel = TimerViewModel()
+    @Namespace private var modeNamespace
 
     let sites: [BlockedSite]
     let apps: [BlockedApp]
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: Constants.Design.spacingLG) {
             modePicker
             timerDisplay
             timerOptions
@@ -22,41 +23,36 @@ struct IdleContentView: View {
         }
     }
 
+    // MARK: - 모드 피커 (슬라이딩 캡슐)
+
     private var modePicker: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
             ForEach(TimerViewModel.TimerMode.allCases, id: \.self) { mode in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        viewModel.selectMode(mode)
-                    }
-                } label: {
-                    Text(mode.displayName)
-                        .font(.callout.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
-                        .background(
-                            viewModel.selectedMode == mode
-                                ? themeManager.primary
-                                : Color.secondary.opacity(0.15)
-                        )
-                        .foregroundStyle(
-                            viewModel.selectedMode == mode
-                                ? .white
-                                : themeManager.textPrimary
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-                .buttonStyle(.plain)
+                SegmentedPill(
+                    title: mode.displayName,
+                    tag: mode,
+                    selection: Binding(
+                        get: { viewModel.selectedMode },
+                        set: { viewModel.selectMode($0) }
+                    ),
+                    namespace: modeNamespace,
+                    activeColor: themeManager.primary
+                )
             }
         }
+        .padding(3)
+        .background(Color.secondary.opacity(0.08), in: Capsule())
     }
 
     // MARK: - 시간 표시
 
     private var timerDisplay: some View {
         Text(viewModel.initialDurationSeconds.formattedAsTimer)
-            .font(.system(size: 48, weight: .light, design: .monospaced))
+            .font(.system(size: 42, weight: .ultraLight, design: .rounded))
+            .monospacedDigit()
             .foregroundStyle(themeManager.textPrimary)
+            .contentTransition(.numericText())
+            .animation(.mediumEase, value: viewModel.initialDurationSeconds)
             .accessibilityLabel(
                 viewModel.selectedMode == .free
                     ? "\(viewModel.selectedDurationMinutes)분 타이머"
@@ -68,10 +64,12 @@ struct IdleContentView: View {
     private var timerOptions: some View {
         switch viewModel.selectedMode {
         case .free:
-            presetButtons
-            customSlider
+            VStack(spacing: Constants.Design.spacingMD) {
+                presetChips
+                customSlider
+            }
         case .pomodoro:
-            VStack(spacing: 8) {
+            VStack(spacing: Constants.Design.spacingSM) {
                 Text(viewModel.pomodoroSummaryText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -85,33 +83,20 @@ struct IdleContentView: View {
         }
     }
 
-    // MARK: - 프리셋 버튼
+    // MARK: - 프리셋 칩 버튼
 
-    private var presetButtons: some View {
-        HStack(spacing: 8) {
+    private var presetChips: some View {
+        HStack(spacing: Constants.Design.spacingSM) {
             ForEach(Constants.Timer.presets, id: \.self) { minutes in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                ChipButton(
+                    title: "\(minutes)분",
+                    isSelected: viewModel.selectedPreset == minutes,
+                    color: themeManager.primary
+                ) {
+                    withAnimation(.focusSpring) {
                         viewModel.selectPreset(minutes)
                     }
-                } label: {
-                    Text("\(minutes)분")
-                        .font(.callout)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
-                        .background(
-                            viewModel.selectedPreset == minutes
-                                ? themeManager.primary
-                                : Color.secondary.opacity(0.15)
-                        )
-                        .foregroundStyle(
-                            viewModel.selectedPreset == minutes
-                                ? .white
-                                : themeManager.textPrimary
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
-                .buttonStyle(.plain)
                 .accessibilityLabel("\(minutes)분 프리셋")
             }
         }
@@ -120,7 +105,7 @@ struct IdleContentView: View {
     // MARK: - 커스텀 슬라이더
 
     private var customSlider: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: Constants.Design.spacingXS) {
             Slider(
                 value: Binding(
                     get: { viewModel.customMinutes },
@@ -137,8 +122,9 @@ struct IdleContentView: View {
                 Text("\(Constants.Timer.maximumMinutes)분")
             }
             .font(.caption2)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.tertiary)
         }
+        .frostedCard(cornerRadius: Constants.Design.cornerMD, padding: Constants.Design.spacingMD)
     }
 
     // MARK: - 차단 요약
@@ -146,7 +132,7 @@ struct IdleContentView: View {
     @ViewBuilder
     private var blockSummary: some View {
         if !sites.isEmpty || !apps.isEmpty {
-            HStack(spacing: 12) {
+            HStack(spacing: Constants.Design.spacingMD) {
                 if !sites.isEmpty {
                     Label("\(sites.count)개 사이트", systemImage: "globe")
                 }
@@ -174,21 +160,15 @@ struct IdleContentView: View {
                 )
             }
         } label: {
-                Text("집중 시작")
-                    .font(.title3.bold())
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(themeManager.startButton)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            Label("집중 시작", systemImage: "bolt.fill")
         }
-        .buttonStyle(.plain)
+        .primaryActionStyle(color: themeManager.startButton)
         .accessibilityLabel("집중 시작")
         .accessibilityHint("타이머를 시작하고 사이트와 앱 차단을 활성화합니다")
     }
 }
 
-// MARK: - 집중 중 콘텐츠
+// MARK: - 집중 중 콘텐츠 (v0.5 리디자인)
 
 struct FocusingContentView: View {
     @Environment(AppState.self) private var appState
@@ -196,32 +176,41 @@ struct FocusingContentView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel = TimerViewModel()
     @State private var phaseBadgeScale: CGFloat = 1.0
+    @State private var breatheOpacity: Double = 1.0
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: Constants.Design.spacingLG) {
             if viewModel.showCancelConfirmation {
                 stopConfirmation
             } else {
                 countdownDisplay
-                progressBar
-                statusText
+                capsuleProgressBar
+                statusBadge
                 controlButtons
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: viewModel.showCancelConfirmation)
+        .animation(.mediumEase, value: viewModel.showCancelConfirmation)
         .onChange(of: appState.currentPomodoroPhase?.type) { _, newValue in
             guard appState.timerMode == .pomodoro, newValue != nil else { return }
             animatePhaseBadge()
+        }
+        .onChange(of: appState.focusState) { _, newValue in
+            if newValue == .paused {
+                startBreatheAnimation()
+            } else {
+                breatheOpacity = 1.0
+            }
         }
     }
 
     // MARK: - 중지 확인 (인라인)
 
     private var stopConfirmation: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: Constants.Design.spacingLG) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 36))
                 .foregroundStyle(themeManager.stopButton)
+                .symbolEffect(.pulse, options: .repeating)
 
             Text("집중을 중지하시겠습니까?")
                 .font(.headline)
@@ -231,36 +220,28 @@ struct FocusingContentView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
-            HStack(spacing: 12) {
+            HStack(spacing: Constants.Design.spacingMD) {
                 Button {
                     viewModel.showCancelConfirmation = false
                 } label: {
-                    Text("계속 집중하기")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                        .background(themeManager.primary.opacity(0.15))
-                        .foregroundStyle(themeManager.primary)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    Label("계속 집중", systemImage: "play.fill")
                 }
-                .buttonStyle(.plain)
+                .secondaryActionStyle(color: themeManager.primary)
 
                 Button {
                     Task {
                         await appState.stopSession(modelContext: modelContext)
                     }
                 } label: {
-                        Text("중지")
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                        .background(themeManager.stopButton)
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    Label("중지", systemImage: "stop.fill")
                 }
-                .buttonStyle(.plain)
+                .primaryActionStyle(color: themeManager.stopButton)
             }
         }
-        .padding(.vertical, 8)
+        .frostedCard()
     }
+
+    // MARK: - 파이차트 카운트다운
 
     private var countdownDisplay: some View {
         PieChartTimerView(
@@ -269,44 +250,104 @@ struct FocusingContentView: View {
             isPaused: appState.focusState == .paused,
             activeColor: phaseAccentColor
         )
+        .opacity(breatheOpacity)
     }
 
-    private var progressBar: some View {
-        ProgressView(value: appState.timer.progress)
-            .tint(phaseAccentColor)
-            .animation(.easeInOut, value: appState.timer.progress)
+    // MARK: - 캡슐 프로그레스 바
+
+    private var capsuleProgressBar: some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.secondary.opacity(0.1))
+
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [phaseAccentColor.opacity(0.7), phaseAccentColor],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: max(6, geometry.size.width * appState.timer.progress))
+                    .animation(.easeInOut(duration: 0.8), value: appState.timer.progress)
+            }
+        }
+        .frame(height: 6)
+        .clipShape(Capsule())
     }
 
-    private var statusText: some View {
-        VStack(spacing: 4) {
+    // MARK: - 상태 뱃지
+
+    private var statusBadge: some View {
+        VStack(spacing: Constants.Design.spacingXS) {
             if appState.timerMode == .pomodoro, let phase = appState.currentPomodoroPhase {
                 HStack(spacing: 6) {
                     Image(systemName: phase.type == .focus ? "bolt.fill" : "cup.and.saucer.fill")
+                        .symbolEffect(.pulse, options: .repeating, isActive: phase.type == .focus)
                     Text(phase.type.displayName)
                 }
                 .font(.caption.weight(.semibold))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(phaseAccentColor.opacity(0.16))
-                    .foregroundStyle(
-                        phaseAccentColor
-                    )
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(phaseAccentColor.opacity(0.12))
+                .foregroundStyle(phaseAccentColor)
                 .clipShape(Capsule())
+                .shadow(color: phaseAccentColor.opacity(0.15), radius: 4, y: 1)
                 .scaleEffect(phaseBadgeScale)
+
                 Text(appState.pomodoroCycleProgressText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else if appState.focusState == .paused {
-                Text("일시정지됨")
-                    .font(.callout)
-                    .foregroundStyle(themeManager.pauseButton)
+                HStack(spacing: 6) {
+                    Image(systemName: "pause.fill")
+                    Text("일시정지됨")
+                }
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(themeManager.pauseButton.opacity(0.12))
+                .foregroundStyle(themeManager.pauseButton)
+                .clipShape(Capsule())
             } else {
                 Text("집중 중...")
-                    .font(.callout)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
     }
+
+    // MARK: - 컨트롤 버튼
+
+    private var controlButtons: some View {
+        HStack(spacing: Constants.Design.spacingMD) {
+            Button {
+                withAnimation(.focusSpring) {
+                    if appState.focusState == .paused {
+                        appState.resumeSession()
+                    } else {
+                        appState.pauseSession()
+                    }
+                }
+            } label: {
+                Label(
+                    appState.focusState == .paused ? "재개" : "일시정지",
+                    systemImage: appState.focusState == .paused ? "play.fill" : "pause.fill"
+                )
+            }
+            .secondaryActionStyle(color: themeManager.pauseButton)
+
+            Button {
+                viewModel.requestStop()
+            } label: {
+                Label("중지", systemImage: "stop.fill")
+            }
+            .secondaryActionStyle(color: themeManager.stopButton)
+        }
+    }
+
+    // MARK: - Helpers
 
     private var phaseAccentColor: Color {
         guard appState.timerMode == .pomodoro,
@@ -317,100 +358,189 @@ struct FocusingContentView: View {
     }
 
     private func animatePhaseBadge() {
-        phaseBadgeScale = 0.9
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.65, blendDuration: 0.1)) {
-            phaseBadgeScale = 1.08
+        phaseBadgeScale = 0.85
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) {
+            phaseBadgeScale = 1.12
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-            withAnimation(.easeOut(duration: 0.18)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            withAnimation(.easeOut(duration: 0.15)) {
                 phaseBadgeScale = 1.0
             }
         }
     }
 
-    private var controlButtons: some View {
-        HStack(spacing: 12) {
-            // 일시정지 / 재개
-            Button {
-                withAnimation(.spring(duration: 0.3)) {
-                    if appState.focusState == .paused {
-                        appState.resumeSession()
-                    } else {
-                        appState.pauseSession()
-                    }
-                }
-            } label: {
-                Label(
-                    appState.focusState == .paused ? "재개" : "일시정지",
-                    systemImage: appState.focusState == .paused
-                        ? "play.fill" : "pause.fill"
-                )
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .background(themeManager.pauseButton.opacity(0.15))
-                .foregroundStyle(themeManager.pauseButton)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
-            .buttonStyle(.plain)
-
-            // 중지
-            Button {
-                viewModel.requestStop()
-            } label: {
-                Label("중지", systemImage: "stop.fill")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(themeManager.stopButton.opacity(0.15))
-                    .foregroundStyle(themeManager.stopButton)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
-            .buttonStyle(.plain)
+    private func startBreatheAnimation() {
+        withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+            breatheOpacity = 0.6
         }
     }
 }
 
-// MARK: - 완료 콘텐츠
+// MARK: - 완료 콘텐츠 (v0.5 리디자인)
 
 struct CompletedContentView: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var themeManager
+    @State private var checkScale: CGFloat = 0
+    @State private var showSummary = false
+    @State private var confettiParticles: [ConfettiParticle] = []
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: Constants.Design.spacingXL) {
+            celebrationIcon
+            summaryContent
+            confirmButton
+        }
+        .padding(.vertical, Constants.Design.spacingSM)
+        .onAppear { playCelebration() }
+    }
+
+    // MARK: - 축하 아이콘
+
+    private var celebrationIcon: some View {
+        ZStack {
+            // 컨페티 파티클
+            ForEach(confettiParticles) { particle in
+                Circle()
+                    .fill(particle.color)
+                    .frame(width: particle.size, height: particle.size)
+                    .offset(particle.offset)
+                    .opacity(particle.opacity)
+            }
+
+            // 외곽 글로우 링
+            Circle()
+                .fill(themeManager.completed.opacity(0.08))
+                .frame(width: 80, height: 80)
+                .scaleEffect(checkScale)
+
+            // 체크마크
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 48))
                 .foregroundStyle(themeManager.completed)
+                .scaleEffect(checkScale)
+        }
+        .frame(height: 90)
+    }
 
-            Text("집중 완료!")
-                .font(.title2.bold())
+    // MARK: - 요약 콘텐츠
 
-            Text(appState.completedSummaryText)
+    @ViewBuilder
+    private var summaryContent: some View {
+        if showSummary {
+            VStack(spacing: Constants.Design.spacingMD) {
+                Text("집중 완료!")
+                    .font(.title3.bold())
+
+                VStack(spacing: Constants.Design.spacingSM) {
+                    summaryRow(
+                        icon: "clock.fill",
+                        color: themeManager.primary,
+                        text: appState.completedSummaryText
+                    )
+
+                    if let detailText = appState.completedDetailText {
+                        summaryRow(
+                            icon: "chart.bar.fill",
+                            color: themeManager.secondary,
+                            text: detailText
+                        )
+                    }
+                }
+                .frostedCard(cornerRadius: Constants.Design.cornerMD, padding: Constants.Design.spacingMD)
+            }
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+
+    private func summaryRow(icon: String, color: Color, text: String) -> some View {
+        HStack(spacing: Constants.Design.spacingSM) {
+            IconBadge(systemName: icon, color: color, size: 28)
+            Text(text)
                 .font(.callout)
                 .foregroundStyle(.secondary)
+            Spacer()
+        }
+    }
 
-            if let completedDetailText = appState.completedDetailText {
-                Text(completedDetailText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+    // MARK: - 확인 버튼
 
+    @ViewBuilder
+    private var confirmButton: some View {
+        if showSummary {
             Button {
-                withAnimation(.spring(duration: 0.3)) {
+                withAnimation(.focusSpring) {
                     appState.resetToIdle()
                 }
             } label: {
-                Text("확인")
-                    .font(.callout.bold())
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(themeManager.primary)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                Label("확인", systemImage: "checkmark")
             }
-            .buttonStyle(.plain)
+            .primaryActionStyle(color: themeManager.primary)
+            .transition(.opacity)
         }
-        .padding(.vertical, 8)
     }
+
+    // MARK: - 축하 애니메이션
+
+    private func playCelebration() {
+        // 체크마크 스케일인
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.6).delay(0.1)) {
+            checkScale = 1.0
+        }
+
+        // 컨페티 버스트
+        spawnConfetti()
+
+        // 요약 페이드인
+        withAnimation(.mediumEase.delay(0.5)) {
+            showSummary = true
+        }
+    }
+
+    private func spawnConfetti() {
+        let colors: [Color] = [
+            themeManager.primary,
+            themeManager.secondary,
+            themeManager.accent,
+            themeManager.completed,
+        ]
+
+        for i in 0..<12 {
+            let angle = Double(i) * (360.0 / 12.0) * .pi / 180
+            let distance: CGFloat = CGFloat.random(in: 30...50)
+            let particle = ConfettiParticle(
+                color: colors[i % colors.count],
+                size: CGFloat.random(in: 4...7),
+                offset: .zero,
+                opacity: 0
+            )
+            confettiParticles.append(particle)
+
+            let idx = confettiParticles.count - 1
+
+            withAnimation(.easeOut(duration: 0.5).delay(0.2)) {
+                confettiParticles[idx].offset = CGSize(
+                    width: cos(angle) * distance,
+                    height: sin(angle) * distance
+                )
+                confettiParticles[idx].opacity = 1
+            }
+
+            withAnimation(.easeIn(duration: 0.3).delay(0.6)) {
+                confettiParticles[idx].opacity = 0
+            }
+        }
+    }
+}
+
+// MARK: - 컨페티 파티클
+
+private struct ConfettiParticle: Identifiable {
+    let id = UUID()
+    let color: Color
+    let size: CGFloat
+    var offset: CGSize
+    var opacity: Double
 }
 
 // MARK: - Previews

@@ -56,7 +56,6 @@ struct FocusYouApp: App {
                 .environment(appState)
                 .environment(settingsViewModel)
                 .environment(themeManager)
-                .preferredColorScheme(.light)
         }
         .defaultSize(width: 840, height: 620)
 
@@ -68,6 +67,22 @@ struct FocusYouApp: App {
                 .environment(themeManager)
         }
         .defaultSize(width: 520, height: 450)
+
+        // MARK: - 프로필 윈도우
+        Window("프로필", id: "profiles") {
+            ProfileListView()
+                .modelContainer(modelContainer)
+                .environment(themeManager)
+        }
+        .defaultSize(width: 520, height: 400)
+
+        // MARK: - 통계 윈도우
+        Window("통계", id: "stats") {
+            StatsView()
+                .modelContainer(modelContainer)
+                .environment(themeManager)
+        }
+        .defaultSize(width: 620, height: 700)
 
         // MARK: - 설정 윈도우
         Window("설정", id: "settings") {
@@ -88,18 +103,79 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         category: "AppLifecycle"
     )
     private var isTerminationCleanupInProgress = false
+    private var windowObservers: [Any] = []
+
+    /// 앱 윈도우로 인식할 타이틀 (MenuBarExtra 팝오버 제외)
+    private static let appWindowTitles: Set<String> = [
+        "Focus You 대시보드", "차단 목록 관리", "프로필", "통계", "설정"
+    ]
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // 앱 시작 시 메뉴바 팝오버 자동 열기
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            NSApp.activate(ignoringOtherApps: true)
-            // MenuBarExtra가 생성한 NSStatusBarButton을 재귀 탐색으로 찾아서 클릭
-            for window in NSApp.windows {
-                if let button = Self.findStatusBarButton(in: window.contentView) {
-                    button.performClick(nil)
-                    return
+        // MenuBarExtra 초기화 최소 대기(0.3초) 후 버튼 폴링 시작
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.pollForStatusBarButton()
+        }
+
+        // 윈도우 열림/닫힘에 따라 Dock + Cmd+Tab 노출 전환
+        setupWindowPolicyObservers()
+    }
+
+    // MARK: - Dynamic Activation Policy
+
+    /// 앱 윈도우가 열리면 Dock/Cmd+Tab에 노출, 모두 닫히면 메뉴바 전용 복귀
+    private func setupWindowPolicyObservers() {
+        let nc = NotificationCenter.default
+        windowObservers.append(
+            nc.addObserver(
+                forName: NSWindow.didBecomeKeyNotification,
+                object: nil, queue: .main
+            ) { [weak self] _ in self?.updateActivationPolicy() }
+        )
+        windowObservers.append(
+            nc.addObserver(
+                forName: NSWindow.willCloseNotification,
+                object: nil, queue: .main
+            ) { [weak self] _ in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self?.updateActivationPolicy()
                 }
             }
+        )
+    }
+
+    private func updateActivationPolicy() {
+        let hasAppWindows = NSApp.windows.contains { window in
+            window.isVisible && Self.appWindowTitles.contains(window.title)
+        }
+        let newPolicy: NSApplication.ActivationPolicy =
+            hasAppWindows ? .regular : .accessory
+
+        guard NSApp.activationPolicy() != newPolicy else { return }
+        NSApp.setActivationPolicy(newPolicy)
+        if newPolicy == .regular {
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
+    /// 0.1초 간격으로 NSStatusBarButton을 폴링하여 발견 즉시 클릭
+    private func pollForStatusBarButton(attempts: Int = 0) {
+        let maxAttempts = 20 // 0.1초 × 20 = 최대 2초 추가 대기
+
+        for window in NSApp.windows {
+            if let button = Self.findStatusBarButton(in: window.contentView) {
+                NSApp.activate(ignoringOtherApps: true)
+                button.performClick(nil)
+                return
+            }
+        }
+
+        guard attempts < maxAttempts else {
+            logger.warning("메뉴바 버튼을 찾지 못함 (타임아웃)")
+            return
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.pollForStatusBarButton(attempts: attempts + 1)
         }
     }
 

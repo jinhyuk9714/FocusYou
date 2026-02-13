@@ -1,8 +1,7 @@
 import SwiftUI
 import SwiftData
 
-// MARK: - 메인 대시보드 창
-// 팝오버는 빠른 조작, 메인 창은 비교/탐색 중심 작업에 사용
+// MARK: - 메인 대시보드 창 (v0.5 리디자인)
 
 struct MainDashboardView: View {
     @Environment(AppState.self) private var appState
@@ -10,136 +9,127 @@ struct MainDashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.openWindow) private var openWindow
 
-    @Query(sort: \BlockedSite.createdAt, order: .reverse)
-    private var blockedSites: [BlockedSite]
-    @Query(sort: \BlockedApp.createdAt, order: .reverse)
-    private var blockedApps: [BlockedApp]
+    @Query(filter: #Predicate<BlockedSite> { $0.isEnabled })
+    private var enabledSites: [BlockedSite]
+    @Query(filter: #Predicate<BlockedApp> { $0.isEnabled })
+    private var enabledApps: [BlockedApp]
     @Query(sort: \FocusSession.startedAt, order: .reverse)
     private var sessions: [FocusSession]
+
     @State private var quickStartMode: AppState.TimerMode = .free
     @State private var selectedFreeMinutes: Int = Constants.Timer.presets.first ?? 25
     @State private var isSessionActionInFlight = false
+    @State private var showThemePicker = false
+    @Namespace private var dashModeNamespace
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: Constants.Design.spacingXL) {
                 header
-                sessionStatusCard
-                sessionControlCard
+                heroCard
                 todayStatsRow
-                themePreviewCard
-                quickActionsCard
+                quickActionsBar
                 recentSessionsCard
             }
-            .padding(20)
+            .padding(Constants.Design.spacingXL)
         }
         .background(themeManager.background)
     }
 
+    // MARK: - 헤더
+
     private var header: some View {
         HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Constants.Design.spacingXS) {
                 Text("Focus You Dashboard")
                     .font(.title2.bold())
-                Text("팝오버는 빠른 실행, 이 창은 관리/비교 용도로 사용")
+                Text("집중 세션 관리 및 통계")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
 
             Spacer()
 
-            Circle()
-                .fill(statusColor)
-                .frame(width: 10, height: 10)
-            Text(statusTitle)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(statusColor)
+            HStack(spacing: Constants.Design.spacingSM) {
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 8, height: 8)
+                Text(statusTitle)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(statusColor)
+            }
+            .padding(.horizontal, Constants.Design.spacingMD)
+            .padding(.vertical, Constants.Design.spacingSM)
+            .background(statusColor.opacity(0.08), in: Capsule())
         }
     }
 
-    private var sessionStatusCard: some View {
-        GroupBox {
-            HStack(alignment: .center, spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("현재 세션")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(statusTitle)
-                        .font(.headline)
-                    Text(statusDetailText)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+    // MARK: - 히어로 카드 (상태별)
 
-                Spacer()
-
-                Text(remainingTimerText)
-                    .font(.system(size: 32, weight: .light, design: .monospaced))
-                    .foregroundStyle(themeManager.textPrimary)
+    private var heroCard: some View {
+        Group {
+            switch appState.focusState {
+            case .idle:
+                idleHero
+            case .focusing, .paused:
+                activeHero
+            case .completed:
+                completedHero
             }
         }
-        .groupBoxStyle(.automatic)
+        .animation(.mediumEase, value: appState.focusState)
     }
 
-    private var sessionControlCard: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("빠른 세션 제어")
+    // 유휴 → 빠른 시작 CTA
+    private var idleHero: some View {
+        VStack(alignment: .leading, spacing: Constants.Design.spacingLG) {
+            HStack(spacing: Constants.Design.spacingSM) {
+                IconBadge(systemName: "bolt.fill", color: themeManager.primary, size: 36)
+                Text("새 세션 시작")
                     .font(.headline)
-
-                switch appState.focusState {
-                case .idle:
-                    idleSessionControls
-                case .focusing, .paused:
-                    activeSessionControls
-                case .completed:
-                    completedSessionControls
-                }
             }
-        }
-    }
 
-    private var idleSessionControls: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                quickModeButton(.free, title: "자유")
-                quickModeButton(.pomodoro, title: "뽀모도로")
+            // 모드 피커
+            HStack(spacing: 4) {
+                SegmentedPill(
+                    title: "자유",
+                    tag: AppState.TimerMode.free,
+                    selection: $quickStartMode,
+                    namespace: dashModeNamespace,
+                    activeColor: themeManager.primary
+                )
+                SegmentedPill(
+                    title: "뽀모도로",
+                    tag: AppState.TimerMode.pomodoro,
+                    selection: $quickStartMode,
+                    namespace: dashModeNamespace,
+                    activeColor: themeManager.primary
+                )
             }
+            .padding(3)
+            .background(Color.secondary.opacity(0.06), in: Capsule())
 
             if quickStartMode == .free {
-                HStack(spacing: 8) {
+                HStack(spacing: Constants.Design.spacingSM) {
                     ForEach(Constants.Timer.presets, id: \.self) { minutes in
-                        Button {
+                        ChipButton(
+                            title: "\(minutes)분",
+                            isSelected: selectedFreeMinutes == minutes,
+                            color: themeManager.primary
+                        ) {
                             selectedFreeMinutes = minutes
-                        } label: {
-                            Text("\(minutes)분")
-                                .font(.caption.weight(.semibold))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 6)
-                                .background(
-                                    selectedFreeMinutes == minutes
-                                        ? themeManager.primary.opacity(0.2)
-                                        : Color.secondary.opacity(0.1)
-                                )
-                                .foregroundStyle(
-                                    selectedFreeMinutes == minutes
-                                        ? themeManager.primary
-                                        : themeManager.textPrimary
-                                )
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             } else {
-                Text("기본 설정으로 시작: 집중 \(Constants.Timer.pomodoroFocusDefaultMinutes)분 · \(Constants.Timer.pomodoroCyclesDefault)사이클")
+                Text("기본 설정: 집중 \(Constants.Timer.pomodoroFocusDefaultMinutes)분 · \(Constants.Timer.pomodoroCyclesDefault)사이클")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
-            HStack(spacing: 8) {
-                Label("\(enabledSiteCount)개 사이트", systemImage: "globe")
-                Label("\(enabledAppCount)개 앱", systemImage: "app.fill")
+            HStack(spacing: Constants.Design.spacingMD) {
+                Label("\(enabledSites.count)개 사이트", systemImage: "globe")
+                Label("\(enabledApps.count)개 앱", systemImage: "app.fill")
             }
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -151,106 +141,348 @@ struct MainDashboardView: View {
                     quickStartMode == .pomodoro
                         ? "뽀모도로 시작"
                         : "\(selectedFreeMinutes)분 집중 시작",
-                    systemImage: "play.fill"
+                    systemImage: "bolt.fill"
                 )
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(themeManager.startButton)
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
             }
-            .buttonStyle(.plain)
+            .primaryActionStyle(color: themeManager.startButton)
             .disabled(isSessionActionInFlight)
         }
+        .frostedCard()
     }
 
-    private var activeSessionControls: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(
-                appState.timerMode == .pomodoro
-                    ? "\(appState.pomodoroPhaseTitle) · \(appState.pomodoroCycleProgressText)"
-                    : "자유 타이머 진행 중"
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
+    // 진행 중 → 라이브 타이머
+    private var activeHero: some View {
+        HStack(spacing: Constants.Design.spacingXL) {
+            VStack(alignment: .leading, spacing: Constants.Design.spacingSM) {
+                Text(statusTitle)
+                    .font(.headline)
 
-            HStack(spacing: 10) {
-                Button {
-                    if appState.focusState == .paused {
-                        appState.resumeSession()
-                    } else {
-                        appState.pauseSession()
+                Text(statusDetailText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: Constants.Design.spacingSM) {
+                    Button {
+                        if appState.focusState == .paused {
+                            appState.resumeSession()
+                        } else {
+                            appState.pauseSession()
+                        }
+                    } label: {
+                        Label(
+                            appState.focusState == .paused ? "재개" : "일시정지",
+                            systemImage: appState.focusState == .paused ? "play.fill" : "pause.fill"
+                        )
                     }
-                } label: {
-                    Label(
-                        appState.focusState == .paused ? "재개" : "일시정지",
-                        systemImage: appState.focusState == .paused ? "play.fill" : "pause.fill"
-                    )
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(themeManager.pauseButton.opacity(0.15))
-                    .foregroundStyle(themeManager.pauseButton)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-                .buttonStyle(.plain)
-                .disabled(isSessionActionInFlight)
+                    .secondaryActionStyle(color: themeManager.pauseButton)
+                    .disabled(isSessionActionInFlight)
 
-                Button {
-                    stopSessionFromDashboard()
-                } label: {
-                    Label("중지", systemImage: "stop.fill")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                        .background(themeManager.stopButton.opacity(0.15))
-                        .foregroundStyle(themeManager.stopButton)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    Button {
+                        stopSessionFromDashboard()
+                    } label: {
+                        Label("중지", systemImage: "stop.fill")
+                    }
+                    .secondaryActionStyle(color: themeManager.stopButton)
+                    .disabled(isSessionActionInFlight)
                 }
-                .buttonStyle(.plain)
-                .disabled(isSessionActionInFlight)
+            }
+
+            Spacer()
+
+            VStack(spacing: Constants.Design.spacingXS) {
+                Text(remainingTimerText)
+                    .font(.system(size: 36, weight: .light, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(themeManager.primary)
+
+                Text("남은 시간")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
         }
+        .frostedCard()
+        .overlay(
+            RoundedRectangle(cornerRadius: Constants.Design.cornerLG)
+                .stroke(themeManager.primary.opacity(0.15), lineWidth: 0.5)
+        )
     }
 
-    private var completedSessionControls: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(appState.completedSummaryText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+    // 완료 → 축하
+    private var completedHero: some View {
+        HStack(spacing: Constants.Design.spacingLG) {
+            IconBadge(systemName: "checkmark.circle.fill", color: themeManager.completed, size: 44)
+
+            VStack(alignment: .leading, spacing: Constants.Design.spacingXS) {
+                Text("세션 완료!")
+                    .font(.headline)
+                Text(appState.completedSummaryText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
 
             Button {
                 appState.resetToIdle()
             } label: {
-                Label("완료 확인", systemImage: "checkmark")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(themeManager.primary.opacity(0.16))
-                    .foregroundStyle(themeManager.primary)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                Label("확인", systemImage: "checkmark")
             }
-            .buttonStyle(.plain)
+            .primaryActionStyle(color: themeManager.primary)
+            .frame(width: 100)
+        }
+        .frostedCard()
+    }
+
+    // MARK: - 오늘 통계
+
+    private var todayStatsRow: some View {
+        HStack(spacing: Constants.Design.spacingMD) {
+            statCard(
+                icon: "timer",
+                color: themeManager.primary,
+                value: TimeInterval(todayFocusedSeconds).formattedAsReadable,
+                label: "오늘 집중 시간"
+            )
+            statCard(
+                icon: "chart.bar.fill",
+                color: themeManager.secondary,
+                value: "\(todayCompletedPomodoroCount)회",
+                label: "완료한 뽀모도로"
+            )
+            statCard(
+                icon: "checkmark.seal.fill",
+                color: themeManager.accent,
+                value: "\(todayCompletionRate)%",
+                label: "세션 완료율"
+            )
         }
     }
 
-    private func quickModeButton(_ mode: AppState.TimerMode, title: String) -> some View {
-        Button {
-            quickStartMode = mode
-        } label: {
-            Text(title)
+    private func statCard(
+        icon: String,
+        color: Color,
+        value: String,
+        label: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: Constants.Design.spacingMD) {
+            IconBadge(systemName: icon, color: color, size: 32)
+
+            Text(value)
+                .font(.title3.bold())
+                .foregroundStyle(color)
+
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frostedCard()
+    }
+
+    // MARK: - 퀵 액션 바
+
+    private var quickActionsBar: some View {
+        HStack(spacing: Constants.Design.spacingMD) {
+            dashboardAction(title: "차단 목록", symbol: "list.bullet.rectangle", tint: themeManager.primary) {
+                openWindow(id: "block-list")
+            }
+            dashboardAction(title: "설정", symbol: "gearshape", tint: themeManager.accent) {
+                openWindow(id: "settings")
+            }
+
+            // 테마 퀵 피커
+            Button {
+                showThemePicker.toggle()
+            } label: {
+                HStack(spacing: Constants.Design.spacingSM) {
+                    Text(themeManager.selectedTheme.name)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+
+                    HStack(spacing: 4) {
+                        Circle().fill(themeManager.primary).frame(width: 10, height: 10)
+                        Circle().fill(themeManager.secondary).frame(width: 10, height: 10)
+                        Circle().fill(themeManager.accent).frame(width: 10, height: 10)
+                    }
+
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .frostedCard(cornerRadius: Constants.Design.cornerMD, padding: Constants.Design.spacingMD)
+            .popover(isPresented: $showThemePicker) {
+                themePickerPopover
+            }
+        }
+    }
+
+    private func dashboardAction(
+        title: String,
+        symbol: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: symbol)
                 .font(.callout.weight(.semibold))
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 7)
+        }
+        .secondaryActionStyle(color: tint)
+    }
+
+    // MARK: - 테마 피커 팝오버
+
+    private var themePickerPopover: some View {
+        VStack(spacing: 0) {
+            Text("테마 선택")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Constants.Design.spacingMD)
+                .padding(.vertical, Constants.Design.spacingSM)
+
+            Rectangle().fill(.quaternary).frame(height: 0.5)
+
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(themeManager.availableThemes) { theme in
+                        let isSelected = theme.id == themeManager.selectedThemeID
+
+                        Button {
+                            withAnimation(.quickEase) {
+                                themeManager.selectTheme(id: theme.id)
+                            }
+                        } label: {
+                            HStack(spacing: Constants.Design.spacingSM) {
+                                HStack(spacing: 2) {
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(Color(hex: theme.primaryHex))
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(Color(hex: theme.secondaryHex))
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(Color(hex: theme.accentHex))
+                                }
+                                .frame(width: 40, height: 12)
+                                .clipShape(RoundedRectangle(cornerRadius: 3))
+
+                                Text(theme.name)
+                                    .font(.callout)
+                                    .foregroundStyle(.primary)
+
+                                Spacer()
+
+                                if isSelected {
+                                    Image(systemName: "checkmark")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(Color(hex: theme.primaryHex))
+                                }
+                            }
+                            .padding(.horizontal, Constants.Design.spacingMD)
+                            .padding(.vertical, Constants.Design.spacingSM)
+                            .background(
+                                isSelected
+                                    ? Color(hex: theme.primaryHex).opacity(0.06)
+                                    : Color.clear
+                            )
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .frame(width: 220, height: 340)
+    }
+
+    // MARK: - 최근 세션 (테이블)
+
+    private var recentSessionsCard: some View {
+        VStack(alignment: .leading, spacing: Constants.Design.spacingMD) {
+            Text("오늘 세션")
+                .font(.headline)
+
+            if todaySessions.isEmpty {
+                HStack {
+                    Spacer()
+                    VStack(spacing: Constants.Design.spacingSM) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 28))
+                            .foregroundStyle(.tertiary)
+                        Text("아직 기록된 세션이 없습니다.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, Constants.Design.spacingXL)
+                    Spacer()
+                }
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(todaySessions.prefix(8).enumerated()), id: \.element.id) { index, session in
+                        sessionRow(session, isEven: index.isMultiple(of: 2))
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: Constants.Design.cornerMD))
+            }
+        }
+        .frostedCard()
+    }
+
+    private func sessionRow(_ session: FocusSession, isEven: Bool) -> some View {
+        HStack(spacing: Constants.Design.spacingMD) {
+            Text(session.timerMode == "pomodoro" ? "뽀모도로" : "자유")
+                .font(.callout.weight(.medium))
+
+            Spacer()
+
+            Text(TimeInterval(session.actualDuration).formattedAsReadable)
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+
+            Text(session.wasCompleted ? "완료" : "중지")
+                .font(.caption2.weight(.semibold))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
                 .background(
-                    quickStartMode == mode
-                        ? themeManager.primary.opacity(0.2)
-                        : Color.secondary.opacity(0.12)
+                    session.wasCompleted
+                        ? themeManager.secondary.opacity(0.12)
+                        : themeManager.stopButton.opacity(0.1)
                 )
                 .foregroundStyle(
-                    quickStartMode == mode ? themeManager.primary : themeManager.textPrimary
+                    session.wasCompleted ? themeManager.secondary : themeManager.stopButton
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .padding(.horizontal, Constants.Design.spacingMD)
+        .padding(.vertical, Constants.Design.spacingSM)
+        .background(isEven ? Color.secondary.opacity(0.03) : Color.clear)
     }
+
+    // MARK: - 데이터
+
+    private var todaySessions: [FocusSession] {
+        let start = Date().startOfDay
+        return sessions.filter { $0.startedAt >= start }
+    }
+
+    private var todayFocusedSeconds: Int {
+        todaySessions.reduce(0) { $0 + $1.actualDuration }
+    }
+
+    private var todayCompletedPomodoroCount: Int {
+        todaySessions.filter { $0.timerMode == "pomodoro" && $0.wasCompleted }.count
+    }
+
+    private var todayCompletionRate: Int {
+        guard !todaySessions.isEmpty else { return 0 }
+        let completed = todaySessions.filter(\.wasCompleted).count
+        return Int((Double(completed) / Double(todaySessions.count)) * 100)
+    }
+
+    // MARK: - 세션 액션
 
     private func startSessionFromDashboard() {
         guard !isSessionActionInFlight else { return }
@@ -263,8 +495,8 @@ struct MainDashboardView: View {
         Task { @MainActor in
             await appState.startFocusSession(
                 duration: selectedDuration,
-                sites: blockedSites,
-                apps: blockedApps,
+                sites: enabledSites,
+                apps: enabledApps,
                 modelContext: modelContext,
                 mode: quickStartMode,
                 pomodoroConfiguration: .default
@@ -283,214 +515,26 @@ struct MainDashboardView: View {
         }
     }
 
-    private var todayStatsRow: some View {
-        HStack(spacing: 12) {
-            statCard(
-                title: "오늘 집중 시간",
-                value: TimeInterval(todayFocusedSeconds).formattedAsReadable,
-                symbol: "timer",
-                accent: themeManager.primary
-            )
-            statCard(
-                title: "완료한 뽀모도로",
-                value: "🍅 ×\(todayCompletedPomodoroCount)",
-                symbol: "chart.bar.fill",
-                accent: themeManager.secondary
-            )
-            statCard(
-                title: "세션 완료율",
-                value: "\(todayCompletionRate)%",
-                symbol: "checkmark.seal.fill",
-                accent: themeManager.accent
-            )
-        }
-    }
-
-    private func statCard(
-        title: String,
-        value: String,
-        symbol: String,
-        accent: Color
-    ) -> some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 8) {
-                Label(title, systemImage: symbol)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(value)
-                    .font(.title3.bold())
-                    .foregroundStyle(accent)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 4)
-        }
-    }
-
-    private var themePreviewCard: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("테마 실시간 미리보기")
-                    .font(.headline)
-
-                HStack(spacing: 10) {
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(themeManager.primary.opacity(0.2))
-                        .frame(width: 90, height: 60)
-                        .overlay(
-                            Text("25:00")
-                                .font(.headline.monospacedDigit())
-                                .foregroundStyle(themeManager.primary)
-                        )
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("현재 테마: \(themeManager.selectedTheme.name)")
-                            .font(.callout)
-                        HStack(spacing: 6) {
-                            Circle().fill(themeManager.primary)
-                            Circle().fill(themeManager.secondary)
-                            Circle().fill(themeManager.accent)
-                            Circle().fill(themeManager.stopButton)
-                        }
-                        .frame(height: 10)
-                    }
-                    Spacer()
-                }
-            }
-        }
-    }
-
-    private var quickActionsCard: some View {
-        GroupBox {
-            HStack(spacing: 12) {
-                dashboardActionButton(
-                    title: "차단 목록",
-                    symbol: "list.bullet.rectangle",
-                    tint: themeManager.primary
-                ) {
-                    openWindow(id: "block-list")
-                }
-
-                dashboardActionButton(
-                    title: "설정",
-                    symbol: "gearshape",
-                    tint: themeManager.accent
-                ) {
-                    openWindow(id: "settings")
-                }
-            }
-        }
-    }
-
-    private func dashboardActionButton(
-        title: String,
-        symbol: String,
-        tint: Color,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: symbol)
-                .font(.callout.weight(.semibold))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(tint.opacity(0.14))
-                .foregroundStyle(tint)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var recentSessionsCard: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("오늘 세션")
-                    .font(.headline)
-
-                if todaySessions.isEmpty {
-                    Text("아직 기록된 세션이 없습니다.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(todaySessions.prefix(5)) { session in
-                        HStack {
-                            Text(session.timerMode == "pomodoro" ? "🍅 뽀모도로" : "⏱ 자유")
-                                .font(.callout)
-                            Spacer()
-                            Text(TimeInterval(session.actualDuration).formattedAsReadable)
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                            Text(session.wasCompleted ? "완료" : "중지")
-                                .font(.caption2.weight(.semibold))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(
-                                    session.wasCompleted
-                                        ? themeManager.secondary.opacity(0.2)
-                                        : themeManager.stopButton.opacity(0.16)
-                                )
-                                .foregroundStyle(
-                                    session.wasCompleted ? themeManager.secondary : themeManager.stopButton
-                                )
-                                .clipShape(Capsule())
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private var todaySessions: [FocusSession] {
-        let start = Date().startOfDay
-        return sessions.filter { $0.startedAt >= start }
-    }
-
-    private var todayFocusedSeconds: Int {
-        todaySessions.reduce(0) { partial, session in
-            partial + session.actualDuration
-        }
-    }
-
-    private var todayCompletedPomodoroCount: Int {
-        todaySessions.filter { $0.timerMode == "pomodoro" && $0.wasCompleted }.count
-    }
-
-    private var todayCompletionRate: Int {
-        guard !todaySessions.isEmpty else { return 0 }
-        let completed = todaySessions.filter(\.wasCompleted).count
-        return Int((Double(completed) / Double(todaySessions.count)) * 100)
-    }
-
-    private var enabledSiteCount: Int {
-        blockedSites.filter(\.isEnabled).count
-    }
-
-    private var enabledAppCount: Int {
-        blockedApps.filter(\.isEnabled).count
-    }
+    // MARK: - 상태 텍스트
 
     private var statusTitle: String {
         switch appState.focusState {
-        case .idle:
-            return "대기 중"
-        case .focusing:
-            return appState.timerMode == .pomodoro ? "뽀모도로 진행 중" : "집중 진행 중"
-        case .paused:
-            return "일시정지"
-        case .completed:
-            return "세션 완료"
+        case .idle: return "대기 중"
+        case .focusing: return appState.timerMode == .pomodoro ? "뽀모도로 진행 중" : "집중 진행 중"
+        case .paused: return "일시정지"
+        case .completed: return "세션 완료"
         }
     }
 
     private var statusDetailText: String {
         switch appState.focusState {
-        case .idle:
-            return "새 집중 세션을 시작해보세요"
+        case .idle: return "새 집중 세션을 시작해보세요"
         case .focusing, .paused:
             if appState.timerMode == .pomodoro {
                 return "\(appState.pomodoroPhaseTitle) · \(appState.pomodoroCycleProgressText)"
             }
             return "자유 타이머"
-        case .completed:
-            return appState.completedSummaryText
+        case .completed: return appState.completedSummaryText
         }
     }
 
@@ -498,23 +542,17 @@ struct MainDashboardView: View {
         switch appState.focusState {
         case .focusing, .paused:
             return appState.timer.remainingTime.formattedAsTimer
-        case .idle:
-            return "00:00"
-        case .completed:
-            return "DONE"
+        case .idle: return "00:00"
+        case .completed: return "DONE"
         }
     }
 
     private var statusColor: Color {
         switch appState.focusState {
-        case .idle:
-            return .secondary
-        case .focusing:
-            return themeManager.primary
-        case .paused:
-            return themeManager.pauseButton
-        case .completed:
-            return themeManager.completed
+        case .idle: return .secondary
+        case .focusing: return themeManager.primary
+        case .paused: return themeManager.pauseButton
+        case .completed: return themeManager.completed
         }
     }
 }
