@@ -12,6 +12,8 @@ struct AppTheme: Identifiable, Codable, Equatable, Sendable {
     let backgroundHex: String
     /// 다크모드 배경 (optional, 하위호환)
     let backgroundDarkHex: String?
+    /// 테마 카테고리 (v1.3: "미니멀", "따뜻한", "차가운", "자연", "네온", "파스텔")
+    let category: String?
 
     init(
         id: String,
@@ -21,7 +23,8 @@ struct AppTheme: Identifiable, Codable, Equatable, Sendable {
         accentHex: String,
         stopHex: String,
         backgroundHex: String,
-        backgroundDarkHex: String? = nil
+        backgroundDarkHex: String? = nil,
+        category: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -31,5 +34,6 @@ struct AppTheme: Identifiable, Codable, Equatable, Sendable {
         self.stopHex = stopHex
         self.backgroundHex = backgroundHex
         self.backgroundDarkHex = backgroundDarkHex
+        self.category = category
     }
 }

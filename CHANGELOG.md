@@ -2,6 +2,55 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.5.0] - 2026-02-15
+
+### Added
+- 회고 Level 2-3: 별점(1-5) + 방해요소 태그 (#SNS #이메일 #전화 #소음 #피곤) 다중 선택.
+- 통계 확장: 연간 기간 필터, 히트맵(GitHub 스타일), 의도별 카테고리 분석, 월간 트렌드 라인 차트.
+- 데이터 내보내기: CSV/JSON 포맷, 날짜 범위 필터, NSSavePanel 파일 저장.
+- 번아웃 방지: 일일 집중 한계 알림(기본 6시간), 균형 점수(집중:휴식 비율), 90분 스트레칭 알림.
+- 비주얼 성장 시스템: 🌱→🌿→🌳→🌲→🏞️ 5단계 누적 집중 시간 기반 성장.
+- 동기부여 시스템: 10개 마일스톤 배지(스트릭/시간/세션), 25개 명언(KR/EN), 축하 오버레이.
+- Badge SwiftData 모델 추가.
+
+### Changed
+- ThemeManager에 시맨틱 상태 색상 추가 (warning/success/danger).
+- SettingsView body를 computed property로 분리 (67줄 → 20줄).
+- BurnoutDetector 매직 넘버를 Constants로 이동.
+- v1.5 뷰 7개에 접근성 레이블 추가 (VoiceOver 지원).
+- 하드코딩 .orange 색상 14곳을 ThemeManager 경유로 전환.
+- RetrospectView의 print() 6곳을 os.Logger로 전환.
+
+### Testing
+- 211 tests, 0 failures.
+- GrowthManagerTests, BurnoutDetectorTests, ExportServiceTests, MilestoneDetectorTests 신규 추가.
+
+## [1.4.0] - 2026-02-15
+
+### Added
+- Shortcuts/Siri 통합: AppIntents로 세션 시작/중지/상태 확인/통계 조회.
+- macOS Focus Mode 연동: 시스템 집중 모드 활성화 시 자동 세션 시작.
+- 데스크톱 위젯: WidgetKit 기반 집중 상태/스트릭 위젯.
+- 앱 디밍: 차단 앱 윈도우 투명도 조절 (0.1~0.8).
+- Apple Calendar 동기화: 완료 세션을 Focus You 캘린더에 자동 기록.
+- 스케줄 시스템: 요일별 자동 집중 세션 시작.
+- Health Check 진단 뷰: DNS/hosts 파일/차단 상태 실시간 검증.
+- Private Relay 감지 및 경고 배너.
+- 앰비언트 사운드: 빗소리, 카페, 자연, 화이트 노이즈 (AVAudioEngine).
+- 의도 입력: 세션 시작 전 집중 목표 기록.
+- 회고 Level 1: 이모지 4종 원탭 회고.
+- 로그인 시 자동 시작 (ServiceManagement).
+- 테마 70+ 확장 (ThemeCatalog.json).
+
+### Changed
+- BlockSchedule SwiftData 모델 추가.
+- SharedDataProvider로 앱↔위젯 데이터 공유 (App Groups).
+- FocusModeObserver로 시스템 집중 모드 감지.
+- AppDimmingManager로 NSWindow 레벨 투명도 제어.
+
+### Testing
+- 203 tests, 0 failures.
+
 ## [1.0.1] - 2026-02-14
 
 ### Added

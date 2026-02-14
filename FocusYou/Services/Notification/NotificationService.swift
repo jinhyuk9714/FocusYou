@@ -97,6 +97,16 @@ actor NotificationService {
         await send(content: content, identifier: "pomodoro-phase-\(UUID().uuidString)")
     }
 
+    /// 스트레칭 알림 (v1.5 번아웃 방지)
+    func sendStretchReminder() async {
+        let content = UNMutableNotificationContent()
+        content.title = "잠시 스트레칭 해볼까요?"
+        content.body = "90분 이상 집중했어요. 간단한 스트레칭으로 몸을 풀어주세요!"
+        content.sound = .default
+
+        await send(content: content, identifier: "stretch-reminder")
+    }
+
     // MARK: - Private
 
     private func send(content: UNMutableNotificationContent, identifier: String) async {

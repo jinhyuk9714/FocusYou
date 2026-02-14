@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import SwiftData
+import WidgetKit
 import os
 
 // MARK: - 전역 앱 상태
@@ -9,6 +10,9 @@ import os
 @MainActor
 @Observable
 final class AppState {
+
+    /// AppIntents, Widget 등 외부에서 접근하기 위한 약한 참조
+    static weak var shared: AppState?
 
     // MARK: - 집중 상태
 
@@ -38,6 +42,15 @@ final class AppState {
     private(set) var lastCompletedFlowmodoroBreakDuration: TimeInterval = 0
     var lastCompletedStreakInfo: StreakCalculator.StreakInfo?
 
+    /// 완료된 세션 (회고 저장용, resetToIdle 시 nil)
+    private(set) var completedSession: FocusSession?
+
+    /// 완료된 세션의 의도 (UI 표시용)
+    private(set) var lastCompletedIntention: String?
+
+    /// 마일스톤 축하 표시 (v1.5)
+    var pendingMilestone: Milestone?
+
     /// 현재 세션
     private(set) var currentSession: FocusSession?
 
@@ -50,6 +63,44 @@ final class AppState {
     var showPrivateRelayWarning = false
     private var privateRelayWarningDismissedThisSession = false
 
+    // MARK: - 취소 강도 (v1.3)
+
+    private(set) var sessionStartedAt: Date?
+    private(set) var currentCancelIntensity: Int = 0
+    private(set) var currentCancelLockoutMinutes: Int = 0
+    private(set) var emergencyUnlockCountdown: TimeInterval = 0
+    private(set) var isEmergencyUnlockActive = false
+    private var emergencyUnlockTimer: Timer?
+
+    /// 취소 가능 여부 (취소 강도별 로직)
+    var canCancel: Bool {
+        switch currentCancelIntensity {
+        case 0:
+            return true
+        case 1:
+            return cancelLockoutRemainingSeconds <= 0
+        default:
+            return false
+        }
+    }
+
+    /// Level 1: 잠금 남은 시간 (초)
+    var cancelLockoutRemainingSeconds: TimeInterval {
+        guard currentCancelIntensity == 1,
+              let startedAt = sessionStartedAt else { return 0 }
+        let elapsed = Date().timeIntervalSince(startedAt)
+        let lockoutSeconds = TimeInterval(currentCancelLockoutMinutes * 60)
+        return max(0, lockoutSeconds - elapsed)
+    }
+
+    /// Level 2: 오늘 비상 해제 사용 여부
+    var emergencyUnlockUsedToday: Bool {
+        guard let lastUsed = UserDefaults.standard.object(
+            forKey: "emergencyUnlockLastUsedDate"
+        ) as? Date else { return false }
+        return Calendar.current.isDateInToday(lastUsed)
+    }
+
     // MARK: - 타이머
 
     let timer = FreeTimer()
@@ -59,6 +110,7 @@ final class AppState {
     private var accumulatedPomodoroFocusDuration: TimeInterval = 0
     private var sessionBlockedDomains: [String] = []
     private var sessionBlockedAppBundleIds: [String] = []
+    private var sessionBlocklistMode: String = "blocklist"
 
     // MARK: - 메뉴바
 
@@ -148,6 +200,9 @@ final class AppState {
                 }
             }
         }
+
+        // AppIntents, Widget 등 외부 접근용
+        Self.shared = self
     }
 
     // MARK: - 집중 세션 시작
@@ -158,7 +213,11 @@ final class AppState {
         apps: [BlockedApp],
         modelContext: ModelContext,
         mode: TimerMode = .free,
-        pomodoroConfiguration: PomodoroConfiguration = .default
+        pomodoroConfiguration: PomodoroConfiguration = .default,
+        intention: String? = nil,
+        blocklistMode: String = "blocklist",
+        cancelIntensity: Int = 0,
+        cancelLockoutMinutes: Int = 5
     ) async {
         guard focusState == .idle else {
             logger.warning("세션 시작 실패: 이미 진행 중")
@@ -174,11 +233,16 @@ final class AppState {
         }
 
         do {
-            // 1. 차단 활성화
-            let enabledDomains = sites.filter(\.isEnabled).map(\.domain)
+            // 1. 차단 활성화 (키워드 패턴 확장 포함)
+            let enabledDomains = sites.filter(\.isEnabled).flatMap { site -> [String] in
+                if site.isKeywordPattern ?? false {
+                    return HostsFileManager.shared.expandKeywordPattern(site.domain)
+                }
+                return [site.domain]
+            }
             let effectiveBundleIds = apps.filter(\.isEnabled).map(\.bundleId)
 
-            logger.info("차단 대상: 사이트 \(enabledDomains.count)개, 앱 \(effectiveBundleIds.count)개")
+            logger.info("차단 대상: 사이트 \(enabledDomains.count)개, 앱 \(effectiveBundleIds.count)개, 모드: \(blocklistMode)")
 
             if enabledDomains.isEmpty && effectiveBundleIds.isEmpty {
                 logger.warning("차단 목록이 비어있음 — 차단 없이 타이머만 시작")
@@ -186,11 +250,13 @@ final class AppState {
 
             try await blockingCoordinator.activateBlocking(
                 domains: enabledDomains,
-                appBundleIds: effectiveBundleIds
+                appBundleIds: effectiveBundleIds,
+                blocklistMode: blocklistMode
             )
             isBlockingActive = !enabledDomains.isEmpty || !effectiveBundleIds.isEmpty
             sessionBlockedDomains = enabledDomains
             sessionBlockedAppBundleIds = effectiveBundleIds
+            sessionBlocklistMode = blocklistMode
 
             // Private Relay 경고 (웹 차단 + 미닫힘)
             if isBlockingActive && !enabledDomains.isEmpty
@@ -232,9 +298,22 @@ final class AppState {
             )
             modelContext.insert(session)
             currentSession = session
+            currentSession?.intention = intention
 
-            // 4. 상태 전환
+            // 4. 취소 강도 설정
+            sessionStartedAt = .now
+            currentCancelIntensity = cancelIntensity
+            currentCancelLockoutMinutes = cancelLockoutMinutes
+
+            // 5. 상태 전환
             focusState = .focusing
+
+            // 6. 앰비언트 사운드
+            await startAmbientSoundIfEnabled()
+
+            // 7. Widget 데이터 공유
+            updateSharedData()
+
             logger.info("집중 세션 시작 완료")
 
         } catch let error as FocusYouError {
@@ -293,7 +372,10 @@ final class AppState {
             apps: profileApps,
             modelContext: modelContext,
             mode: mode,
-            pomodoroConfiguration: pomodoroConfig
+            pomodoroConfiguration: pomodoroConfig,
+            blocklistMode: profile.blocklistMode ?? "blocklist",
+            cancelIntensity: profile.cancelIntensity ?? 0,
+            cancelLockoutMinutes: profile.cancelLockoutMinutes ?? 5
         )
 
         currentSession?.profileName = profile.name
@@ -305,6 +387,7 @@ final class AppState {
         guard focusState == .focusing else { return }
         timer.pause()
         focusState = .paused
+        Task { await pauseAmbientSound() }
         logger.info("세션 일시정지")
     }
 
@@ -312,6 +395,7 @@ final class AppState {
         guard focusState == .paused else { return }
         timer.resume()
         focusState = .focusing
+        Task { await resumeAmbientSound() }
         logger.info("세션 재개")
     }
 
@@ -325,6 +409,7 @@ final class AppState {
         // 타이머 정지
         let elapsed = Int(sessionElapsedDuration)
         timer.stop()
+        await stopAmbientSound()
 
         // 차단 해제
         do {
@@ -347,8 +432,10 @@ final class AppState {
         currentSession = nil
         endFlowmodoroIfNeeded()
         endPomodoroIfNeeded()
+        resetCancelIntensityState()
 
         focusState = .idle
+        updateSharedData()
     }
 
     // MARK: - 타이머 완료 처리
@@ -442,6 +529,13 @@ final class AppState {
             currentPomodoroPhase = nextPhase
             pomodoroCycleProgressText = "사이클 \(nextPhase.cycleIndex)/\(pomodoroEngine.configuration.cycles)"
 
+            // 뽀모도로 페이즈별 앰비언트 사운드 전환
+            if nextPhase.type == .focus {
+                await startAmbientSoundIfEnabled()
+            } else {
+                await stopAmbientSound()
+            }
+
             // completed 상태의 FreeTimer를 다음 페이즈 재시작을 위해 초기화
             timer.reset()
             timer.start(duration: debugScaledDuration(nextPhase.duration))
@@ -469,6 +563,7 @@ final class AppState {
         let focusElapsed = timer.elapsedTime
         logger.info("플로우모도로 집중 완료: \(Int(focusElapsed))초")
         timer.stop()
+        await stopAmbientSound()
 
         // 휴식 계산
         let breakDuration = flowmodoroEngine.finishFocusAndStartBreak(elapsed: focusElapsed)
@@ -530,10 +625,11 @@ final class AppState {
             configuration: pomodoroEngine.configuration
         )
 
-        // 1. 완료 알림
+        // 1. 완료 알림 + 사운드 정지
         await notificationService.sendTimerCompleted(
             duration: notificationDuration
         )
+        await stopAmbientSound()
 
         // 2. 차단 해제
         do {
@@ -553,6 +649,8 @@ final class AppState {
 
         // 3. 세션 기록
         currentSession?.complete(actualDuration: actualDuration)
+        completedSession = currentSession
+        lastCompletedIntention = currentSession?.intention
         currentSession = nil
 
         lastCompletedMode = completedMode
@@ -568,7 +666,22 @@ final class AppState {
         endFlowmodoroIfNeeded()
         endPomodoroIfNeeded()
 
-        // 4. 상태 전환
+        // 4. Apple Calendar 동기화 (v1.3)
+        if UserDefaults.standard.bool(forKey: Constants.Settings.enableCalendarSyncKey),
+           let session = completedSession {
+            Task {
+                if let eventID = await CalendarSyncService.shared.createEvent(for: session) {
+                    session.calendarEventID = eventID
+                }
+            }
+        }
+
+        // 5. 마일스톤 체크 (v1.5)
+        if let context = completedSession?.modelContext {
+            checkMilestones(modelContext: context)
+        }
+
+        // 6. 상태 전환
         focusState = .completed
     }
 
@@ -619,7 +732,8 @@ final class AppState {
         case .focus:
             try await blockingCoordinator.activateBlocking(
                 domains: sessionBlockedDomains,
-                appBundleIds: sessionBlockedAppBundleIds
+                appBundleIds: sessionBlockedAppBundleIds,
+                blocklistMode: sessionBlocklistMode
             )
             isBlockingActive = true
         case .shortBreak, .longBreak:
@@ -639,6 +753,7 @@ final class AppState {
         accumulatedPomodoroFocusDuration = 0
         sessionBlockedDomains = []
         sessionBlockedAppBundleIds = []
+        sessionBlocklistMode = "blocklist"
     }
 
     private func endFlowmodoroIfNeeded() {
@@ -681,13 +796,81 @@ final class AppState {
         timer.reset()
         endFlowmodoroIfNeeded()
         endPomodoroIfNeeded()
+        resetCancelIntensityState()
         lastCompletedMode = .free
         lastCompletedFocusDuration = 0
         lastCompletedPomodoroCycles = 0
         lastCompletedPomodoroBreakDuration = 0
         lastCompletedFlowmodoroBreakDuration = 0
         lastCompletedStreakInfo = nil
+        completedSession = nil
+        lastCompletedIntention = nil
         focusState = .idle
+        updateSharedData()
+    }
+
+    /// 회고 이모지 저장 (완료 화면에서 호출)
+    func saveRetrospectEmoji(_ emoji: String) {
+        completedSession?.retrospectEmoji = emoji
+        logger.info("회고 이모지 저장: \(emoji)")
+    }
+
+    /// 회고 전체 데이터 저장 (Level 2-3용)
+    func saveRetrospectFull(emoji: String?, text: String?, rating: Int?) {
+        completedSession?.retrospectEmoji = emoji
+        completedSession?.retrospectText = text
+        completedSession?.retrospectRating = rating
+        logger.info("회고 저장 완료")
+    }
+
+    // MARK: - 마일스톤 체크 (v1.5)
+
+    private func checkMilestones(modelContext: ModelContext) {
+        let descriptor = FetchDescriptor<FocusSession>()
+        guard let allSessions = try? modelContext.fetch(descriptor) else { return }
+
+        let completedSessions = allSessions.filter { $0.wasCompleted }
+        let totalHours = Double(completedSessions.reduce(0) { $0 + $1.actualDuration }) / 3600.0
+        let totalSessions = completedSessions.count
+        let streakDays = StreakCalculator.calculate(from: allSessions).current
+
+        let newMilestones = MilestoneDetector.checkMilestones(
+            streakDays: streakDays,
+            totalHours: totalHours,
+            totalSessions: totalSessions
+        )
+
+        if !newMilestones.isEmpty {
+            MilestoneDetector.saveBadges(newMilestones, modelContext: modelContext)
+            pendingMilestone = newMilestones.first
+        }
+    }
+
+    // MARK: - 앰비언트 사운드
+
+    private func startAmbientSoundIfEnabled() async {
+        let defaults = UserDefaults.standard
+        guard defaults.bool(forKey: Constants.Settings.enableAmbientSoundKey) else { return }
+
+        let trackRaw = defaults.string(forKey: Constants.Settings.ambientSoundTrackKey)
+            ?? Constants.Settings.ambientSoundTrackDefault
+        let volume = defaults.double(forKey: Constants.Settings.ambientSoundVolumeKey)
+        let track = AmbientSoundTrack(rawValue: trackRaw) ?? .whiteNoise
+        let effectiveVolume = volume > 0 ? Float(volume) : Float(Constants.Settings.ambientSoundVolumeDefault)
+
+        await AmbientSoundManager.shared.play(track: track, volume: effectiveVolume)
+    }
+
+    private func stopAmbientSound() async {
+        await AmbientSoundManager.shared.stop()
+    }
+
+    private func pauseAmbientSound() async {
+        await AmbientSoundManager.shared.pause()
+    }
+
+    private func resumeAmbientSound() async {
+        await AmbientSoundManager.shared.resume()
     }
 
     /// 차단 해제 재시도 (오류 UI의 재시도 버튼에서 호출)
@@ -744,6 +927,66 @@ final class AppState {
         showError = true
     }
 
+    // MARK: - 취소 강도 액션 (v1.3)
+
+    /// Level 2: 비상 해제 요청 (2분 카운트다운 시작)
+    func requestEmergencyUnlock() {
+        guard currentCancelIntensity >= 2,
+              !emergencyUnlockUsedToday else { return }
+
+        isEmergencyUnlockActive = true
+        emergencyUnlockCountdown = Constants.CancelIntensity.emergencyUnlockDuration
+
+        emergencyUnlockTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.emergencyUnlockCountdown -= 1
+                if self.emergencyUnlockCountdown <= 0 {
+                    self.emergencyUnlockTimer?.invalidate()
+                    self.emergencyUnlockTimer = nil
+                }
+            }
+        }
+
+        logger.info("비상 해제 카운트다운 시작")
+    }
+
+    /// 비상 해제 카운트다운 취소
+    func cancelEmergencyUnlock() {
+        emergencyUnlockTimer?.invalidate()
+        emergencyUnlockTimer = nil
+        isEmergencyUnlockActive = false
+        emergencyUnlockCountdown = 0
+        logger.info("비상 해제 취소")
+    }
+
+    /// 비상 해제 확인 (카운트다운 완료 후 세션 중지)
+    func confirmEmergencyUnlock(modelContext: ModelContext) async {
+        guard currentCancelIntensity >= 2,
+              emergencyUnlockCountdown <= 0,
+              isEmergencyUnlockActive else { return }
+
+        // 오늘 사용 기록
+        UserDefaults.standard.set(Date(), forKey: "emergencyUnlockLastUsedDate")
+        isEmergencyUnlockActive = false
+        emergencyUnlockTimer?.invalidate()
+        emergencyUnlockTimer = nil
+
+        logger.info("비상 해제 확인 — 세션 강제 중지")
+        await stopSession(modelContext: modelContext)
+    }
+
+    /// 취소 강도 상태 초기화
+    private func resetCancelIntensityState() {
+        sessionStartedAt = nil
+        currentCancelIntensity = 0
+        currentCancelLockoutMinutes = 0
+        emergencyUnlockCountdown = 0
+        isEmergencyUnlockActive = false
+        emergencyUnlockTimer?.invalidate()
+        emergencyUnlockTimer = nil
+    }
+
     // MARK: - 활성 프로필
 
     func setActiveProfile(_ profile: BlockProfile?) {
@@ -772,5 +1015,42 @@ final class AppState {
     func activeProfile(from profiles: [BlockProfile]) -> BlockProfile? {
         guard let activeProfileID else { return nil }
         return profiles.first(where: { $0.persistentModelID == activeProfileID })
+    }
+
+    // MARK: - Widget 데이터 공유 (v1.4)
+
+    /// 위젯에 현재 상태 전달 (세션 시작/종료/타이머 변경 시 호출)
+    func updateSharedData() {
+        let themeManager = ThemeManager.shared
+        let remaining: Int
+        let total: Int
+
+        switch timerMode {
+        case .free:
+            remaining = Int(timer.remainingTime)
+            total = Int(timer.totalDuration)
+        case .pomodoro:
+            remaining = Int(timer.remainingTime)
+            total = Int(timer.totalDuration)
+        case .flowmodoro:
+            remaining = Int(timer.remainingTime)
+            total = Int(timer.totalDuration)
+        }
+
+        let data = SharedFocusData(
+            isFocusing: focusState == .focusing,
+            timerMode: timerMode.rawValue,
+            remainingSeconds: remaining,
+            totalSeconds: total,
+            currentStreak: lastCompletedStreakInfo?.current ?? 0,
+            longestStreak: lastCompletedStreakInfo?.longest ?? 0,
+            todayFocusMinutes: 0,
+            todaySessionCount: 0,
+            themePrimaryHex: themeManager.selectedTheme.primaryHex,
+            themeAccentHex: themeManager.selectedTheme.accentHex,
+            updatedAt: .now
+        )
+        SharedDataProvider.write(data)
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }

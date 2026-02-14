@@ -12,8 +12,8 @@ settings:
     SWIFT_VERSION: "6.0"
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     PRODUCT_BUNDLE_IDENTIFIER: com.sungjh.focusyou
-    MARKETING_VERSION: "1.0.1"
-    CURRENT_PROJECT_VERSION: "8"
+    MARKETING_VERSION: "1.5.0"
+    CURRENT_PROJECT_VERSION: "13"
     GENERATE_INFOPLIST_FILE: YES
     INFOPLIST_KEY_LSUIElement: YES
     INFOPLIST_KEY_CFBundleDisplayName: "Focus You"
@@ -34,6 +34,32 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ENABLE_APP_SANDBOX: NO
         INFOPLIST_KEY_LSUIElement: YES
+    dependencies:
+      - target: FocusYouWidget
+        embed: true
+  FocusYouWidget:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: FocusYouWidget
+      - path: FocusYou/Services/Shared/SharedDataProvider.swift
+        group: Shared
+      - path: FocusYou/Helpers/Constants.swift
+        group: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sungjh.focusyou.widget
+        PRODUCT_NAME: "FocusYouWidget"
+        SWIFT_EMIT_LOC_STRINGS: YES
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "Focus You Widget"
+        INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        ENABLE_APP_SANDBOX: NO
+        CODE_SIGN_ENTITLEMENTS: FocusYouWidget/FocusYouWidget.entitlements
+        INFOPLIST_KEY_LSUIElement: ""
+    dependencies:
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
   FocusYouTests:
     type: bundle.unit-test
     platform: macOS
@@ -51,6 +77,7 @@ schemes:
     build:
       targets:
         FocusYou: all
+        FocusYouWidget: all
     test:
       targets:
         - FocusYouTests

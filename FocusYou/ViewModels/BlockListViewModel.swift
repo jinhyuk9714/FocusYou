@@ -25,12 +25,45 @@ final class BlockListViewModel {
 
     // MARK: - 웹사이트 관리
 
-    /// URL 정규화 후 차단 사이트 추가
+    /// 키워드 패턴 모드 토글
+    var isKeywordMode = false
+
+    /// URL 정규화 후 차단 사이트 추가 (키워드 모드 시 패턴으로 저장)
     func addWebsite(
         modelContext: ModelContext,
         profile: BlockProfile? = nil
     ) {
-        let normalized = newWebsiteURL.normalizedDomain
+        let input = newWebsiteURL.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if isKeywordMode {
+            guard !input.isEmpty else {
+                errorMessage = "키워드를 입력해주세요"
+                return
+            }
+
+            let isDuplicate: Bool
+            if let profile {
+                isDuplicate = profile.blockedSites.contains { $0.domain == input && ($0.isKeywordPattern ?? false) }
+            } else {
+                let descriptor = FetchDescriptor<BlockedSite>()
+                isDuplicate = (try? modelContext.fetch(descriptor))?
+                    .contains { $0.domain == input && ($0.isKeywordPattern ?? false) && $0.profile == nil } ?? false
+            }
+            if isDuplicate {
+                errorMessage = "이미 추가된 키워드입니다"
+                return
+            }
+
+            let site = BlockedSite(domain: input, isKeywordPattern: true)
+            site.profile = profile
+            modelContext.insert(site)
+            newWebsiteURL = ""
+            errorMessage = nil
+            logger.info("키워드 패턴 추가: \(input)")
+            return
+        }
+
+        let normalized = input.normalizedDomain
 
         guard !normalized.isEmpty else {
             errorMessage = "올바른 URL을 입력해주세요"

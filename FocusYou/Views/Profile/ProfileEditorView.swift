@@ -22,11 +22,13 @@ struct ProfileEditorView: View {
                     iconSection
                     colorSection
                     timerSection
+                    blockingSection
+                    cancelIntensitySection
                 }
                 .padding()
             }
         }
-        .frame(width: 420, height: 520)
+        .frame(width: 420, height: 600)
     }
 
     // MARK: - 헤더
@@ -220,6 +222,124 @@ struct ProfileEditorView: View {
                 }
             }
             .frostedCard(cornerRadius: Constants.Design.cornerMD, padding: Constants.Design.spacingMD)
+        }
+    }
+
+    // MARK: - 차단 모드
+
+    private var blockingSection: some View {
+        VStack(alignment: .leading, spacing: Constants.Design.spacingSM) {
+            Text("차단 모드")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: Constants.Design.spacingSM) {
+                ChipButton(
+                    title: "차단 목록",
+                    isSelected: viewModel.editorBlocklistMode == "blocklist",
+                    color: Color(hex: viewModel.editorColor)
+                ) {
+                    withAnimation(.quickEase) {
+                        viewModel.editorBlocklistMode = "blocklist"
+                    }
+                }
+                ChipButton(
+                    title: "허용 목록",
+                    isSelected: viewModel.editorBlocklistMode == "allowlist",
+                    color: Color(hex: viewModel.editorColor)
+                ) {
+                    withAnimation(.quickEase) {
+                        viewModel.editorBlocklistMode = "allowlist"
+                    }
+                }
+            }
+
+            Text(
+                viewModel.editorBlocklistMode == "allowlist"
+                    ? "목록에 있는 사이트만 허용하고 나머지를 모두 차단합니다."
+                    : "목록에 있는 사이트만 차단합니다."
+            )
+            .font(.caption)
+            .foregroundStyle(.tertiary)
+
+            Toggle(isOn: $viewModel.editorIsHardcoreMode) {
+                HStack(spacing: 4) {
+                    Image(systemName: "lock.shield.fill")
+                        .font(.caption)
+                    Text("하드코어 모드")
+                        .font(.callout)
+                }
+            }
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .tint(Color(hex: viewModel.editorColor))
+
+            if viewModel.editorIsHardcoreMode {
+                Text("타이머 완료 전까지 차단을 해제할 수 없습니다.")
+                    .font(.caption)
+                    .foregroundStyle(themeManager.stopButton.opacity(0.8))
+            }
+        }
+    }
+
+    // MARK: - 취소 강도
+
+    private var cancelIntensitySection: some View {
+        VStack(alignment: .leading, spacing: Constants.Design.spacingSM) {
+            Text("취소 강도")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            Picker("", selection: $viewModel.editorCancelIntensity) {
+                Text("기본").tag(0)
+                Text("강함").tag(1)
+                Text("하드코어").tag(2)
+            }
+            .pickerStyle(.segmented)
+
+            switch viewModel.editorCancelIntensity {
+            case 0:
+                Text("확인 다이얼로그로 중지합니다.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            case 1:
+                HStack(spacing: Constants.Design.spacingSM) {
+                    IconBadge(
+                        systemName: "lock.fill",
+                        color: Color(hex: viewModel.editorColor),
+                        size: 24
+                    )
+                    Text("잠금 시간")
+                        .font(.callout)
+                    Spacer()
+                    Stepper {
+                        Text("\(viewModel.editorCancelLockoutMinutes)분")
+                            .font(.callout.weight(.semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(Color(hex: viewModel.editorColor))
+                    } onIncrement: {
+                        viewModel.editorCancelLockoutMinutes = min(
+                            Constants.CancelIntensity.lockoutMinutesRange.upperBound,
+                            viewModel.editorCancelLockoutMinutes + 1
+                        )
+                    } onDecrement: {
+                        viewModel.editorCancelLockoutMinutes = max(
+                            Constants.CancelIntensity.lockoutMinutesRange.lowerBound,
+                            viewModel.editorCancelLockoutMinutes - 1
+                        )
+                    }
+                    .fixedSize()
+                }
+                .frostedCard(cornerRadius: Constants.Design.cornerMD, padding: Constants.Design.spacingMD)
+
+                Text("세션 시작 후 설정한 시간 동안 중지할 수 없습니다.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            default:
+                Text("중지가 불가능합니다. 비상 해제만 가능합니다 (2분 대기, 1일 1회).")
+                    .font(.caption)
+                    .foregroundStyle(themeManager.stopButton.opacity(0.8))
+            }
         }
     }
 

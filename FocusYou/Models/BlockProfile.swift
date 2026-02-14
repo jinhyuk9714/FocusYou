@@ -45,6 +45,25 @@ final class BlockProfile {
     /// 생성 일시
     var createdAt: Date
 
+    // MARK: - v1.3 고급 차단 + 취소 강도
+    // Optional로 선언하여 기존 데이터 lightweight migration 지원
+
+    /// 차단 모드: "blocklist" (기본) 또는 "allowlist"
+    var blocklistMode: String?
+
+    /// 하드코어 모드 (타이머 취소 불가)
+    var isHardcoreMode: Bool?
+
+    /// 취소 강도 레벨 (0=기본, 1=강함, 2=하드코어)
+    var cancelIntensity: Int?
+
+    /// 취소 잠금 시간 (분, Level 1에서 사용)
+    var cancelLockoutMinutes: Int?
+
+    /// 연결된 스케줄 목록
+    @Relationship(deleteRule: .cascade, inverse: \BlockSchedule.profile)
+    var schedules: [BlockSchedule]
+
     init(
         name: String,
         icon: String = "shield.fill",
@@ -62,6 +81,11 @@ final class BlockProfile {
         self.blockedApps = []
         self.isDefault = false
         self.createdAt = .now
+        self.blocklistMode = "blocklist"
+        self.isHardcoreMode = false
+        self.cancelIntensity = 0
+        self.cancelLockoutMinutes = 5
+        self.schedules = []
     }
 
     /// 기본 프로필 생성

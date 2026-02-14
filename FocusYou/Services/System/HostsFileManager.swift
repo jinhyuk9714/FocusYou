@@ -115,6 +115,49 @@ actor HostsFileManager {
         return removeMarkerSection(from: content)
     }
 
+    // MARK: - 키워드 차단 (v1.3)
+
+    /// 키워드 패턴으로부터 차단 도메인 후보 생성
+    /// hosts 파일 제한으로 주요 TLD 조합만 생성
+    nonisolated func expandKeywordPattern(_ keyword: String) -> [String] {
+        let tlds = ["com", "net", "org", "io", "co"]
+        let normalized = keyword.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else { return [] }
+        return tlds.map { "\(normalized).\($0)" }
+    }
+
+    // MARK: - 화이트리스트 모드 (v1.3)
+
+    /// top-sites.json에서 허용 도메인을 제외한 차단 콘텐츠 생성
+    func buildAllowlistContent(allowedDomains: [String], bundle: Bundle = .main) throws -> String {
+        let topSites = Self.loadTopSites(bundle: bundle)
+        guard !topSites.isEmpty else {
+            logger.warning("top-sites.json 로드 실패 또는 비어있음")
+            throw FocusYouError.hostsFileWriteFailed
+        }
+
+        let allowedSet = Set(allowedDomains.map { $0.lowercased() })
+        let domainsToBlock = topSites.filter { !allowedSet.contains($0.lowercased()) }
+
+        return try buildBlockedContent(domains: domainsToBlock)
+    }
+
+    /// 번들에서 top-sites.json 로드
+    private static func loadTopSites(bundle: Bundle) -> [String] {
+        let candidateURLs = [
+            bundle.url(forResource: "top-sites", withExtension: "json"),
+            bundle.url(forResource: "top-sites", withExtension: "json", subdirectory: "Presets"),
+            bundle.url(forResource: "top-sites", withExtension: "json", subdirectory: "Resources/Presets"),
+        ]
+
+        guard let url = candidateURLs.compactMap({ $0 }).first,
+              let data = try? Data(contentsOf: url),
+              let sites = try? JSONDecoder().decode([String].self, from: data) else {
+            return []
+        }
+        return sites
+    }
+
     // MARK: - Private
 
     /// 도메인 형식 검증 (알파벳, 숫자, 하이픈, 점만 허용 + 점 최소 1개)

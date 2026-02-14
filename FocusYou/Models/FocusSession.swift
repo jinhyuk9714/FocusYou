@@ -47,6 +47,9 @@ final class FocusSession {
     /// 회고 만족도 (1~5)
     var retrospectRating: Int?
 
+    /// Apple Calendar 이벤트 ID (v1.3 캘린더 동기화)
+    var calendarEventID: String?
+
     init(
         timerMode: String = "free",
         plannedDuration: Int? = nil

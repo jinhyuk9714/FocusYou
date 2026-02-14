@@ -8,6 +8,9 @@ struct MenuBarView: View {
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.openWindow) private var openWindow
 
+    @Query(sort: \FocusSession.startedAt, order: .reverse)
+    private var sessions: [FocusSession]
+
     @State private var blockingPulse = false
 
     /// 앱 시작 시 대시보드를 1회만 자동 열기 위한 플래그
@@ -72,6 +75,8 @@ struct MenuBarView: View {
             Text("Focus You")
                 .font(.headline)
 
+            growthIndicator
+
             Spacer()
 
             if appState.isBlockingActive {
@@ -80,6 +85,14 @@ struct MenuBarView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Focus You\(appState.isBlockingActive ? ", 차단 활성화 상태" : "")")
+    }
+
+    private var growthIndicator: some View {
+        let totalHours = Double(sessions.reduce(0) { $0 + $1.actualDuration }) / 3600.0
+        let stage = GrowthManager.currentStage(totalHours: totalHours)
+        return Text(stage.emoji)
+            .font(.caption)
+            .help("\(stage.name) — \(Int(totalHours))시간 누적")
     }
 
     private var blockingBadge: some View {
@@ -154,7 +167,7 @@ struct MenuBarView: View {
                 systemImage: "exclamationmark.shield.fill"
             )
             .font(.caption.weight(.semibold))
-            .foregroundStyle(.orange)
+            .foregroundStyle(themeManager.warning)
 
             Text("iCloud Private Relay가 켜져 있어 Safari에서 웹사이트 차단이 우회됩니다. 아래 방법 중 하나를 선택하세요.")
                 .font(.caption)
@@ -178,7 +191,7 @@ struct MenuBarView: View {
                     Label("Private Relay 설정 열기", systemImage: "gear")
                         .frame(maxWidth: .infinity)
                 }
-                .primaryActionStyle(color: .orange)
+                .primaryActionStyle(color: themeManager.warning)
             }
 
             Button {
@@ -192,7 +205,7 @@ struct MenuBarView: View {
         .frostedCard()
         .overlay(
             RoundedRectangle(cornerRadius: Constants.Design.cornerLG)
-                .stroke(Color.orange.opacity(0.15), lineWidth: 0.5)
+                .stroke(themeManager.warning.opacity(0.15), lineWidth: 0.5)
         )
     }
 

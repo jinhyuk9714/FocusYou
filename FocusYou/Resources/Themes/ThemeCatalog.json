@@ -7,7 +7,8 @@
     "accentHex": "#457B9D",
     "stopHex": "#D62828",
     "backgroundHex": "#F7F9FC",
-    "backgroundDarkHex": "#1C1C1E"
+    "backgroundDarkHex": "#1C1C1E",
+    "category": "따뜻한"
   },
   {
     "id": "ocean-pulse",
@@ -17,7 +18,8 @@
     "accentHex": "#48CAE4",
     "stopHex": "#C1121F",
     "backgroundHex": "#EEF7FB",
-    "backgroundDarkHex": "#1A1E23"
+    "backgroundDarkHex": "#1A1E23",
+    "category": "차가운"
   },
   {
     "id": "sunset-paper",
@@ -27,7 +29,8 @@
     "accentHex": "#FFD166",
     "stopHex": "#D90429",
     "backgroundHex": "#FFF8F1",
-    "backgroundDarkHex": "#221C1A"
+    "backgroundDarkHex": "#221C1A",
+    "category": "따뜻한"
   },
   {
     "id": "forest-studio",
@@ -37,7 +40,8 @@
     "accentHex": "#84A98C",
     "stopHex": "#BC4749",
     "backgroundHex": "#F3F8F5",
-    "backgroundDarkHex": "#1A201D"
+    "backgroundDarkHex": "#1A201D",
+    "category": "자연"
   },
   {
     "id": "midnight-signal",
@@ -47,7 +51,8 @@
     "accentHex": "#FFBE0B",
     "stopHex": "#E63946",
     "backgroundHex": "#F2F5FF",
-    "backgroundDarkHex": "#191B24"
+    "backgroundDarkHex": "#191B24",
+    "category": "네온"
   },
   {
     "id": "terracotta-desk",
@@ -57,7 +62,8 @@
     "accentHex": "#F4A261",
     "stopHex": "#9D0208",
     "backgroundHex": "#FFF4EE",
-    "backgroundDarkHex": "#221B18"
+    "backgroundDarkHex": "#221B18",
+    "category": "따뜻한"
   },
   {
     "id": "mint-notebook",
@@ -67,7 +73,8 @@
     "accentHex": "#B5E48C",
     "stopHex": "#BA181B",
     "backgroundHex": "#F2FCFA",
-    "backgroundDarkHex": "#1A2220"
+    "backgroundDarkHex": "#1A2220",
+    "category": "자연"
   },
   {
     "id": "amber-sprint",
@@ -77,7 +84,8 @@
     "accentHex": "#E71D36",
     "stopHex": "#A4161A",
     "backgroundHex": "#FFF8ED",
-    "backgroundDarkHex": "#221E18"
+    "backgroundDarkHex": "#221E18",
+    "category": "네온"
   },
   {
     "id": "slate-focus",
@@ -87,7 +95,8 @@
     "accentHex": "#90E0EF",
     "stopHex": "#D00000",
     "backgroundHex": "#F4F7FB",
-    "backgroundDarkHex": "#1B1D22"
+    "backgroundDarkHex": "#1B1D22",
+    "category": "차가운"
   },
   {
     "id": "rose-lab",
@@ -97,6 +106,695 @@
     "accentHex": "#FFBC42",
     "stopHex": "#B00020",
     "backgroundHex": "#FFF3F7",
-    "backgroundDarkHex": "#221A1D"
+    "backgroundDarkHex": "#221A1D",
+    "category": "네온"
+  },
+
+  {
+    "id": "graphite-air",
+    "name": "Graphite Air",
+    "primaryHex": "#6B7280",
+    "secondaryHex": "#9CA3AF",
+    "accentHex": "#A1A1AA",
+    "stopHex": "#C53030",
+    "backgroundHex": "#F9FAFB",
+    "backgroundDarkHex": "#18181B",
+    "category": "미니멀"
+  },
+  {
+    "id": "monochrome-zen",
+    "name": "Monochrome Zen",
+    "primaryHex": "#525252",
+    "secondaryHex": "#737373",
+    "accentHex": "#A3A3A3",
+    "stopHex": "#DC2626",
+    "backgroundHex": "#FAFAFA",
+    "backgroundDarkHex": "#171717",
+    "category": "미니멀"
+  },
+  {
+    "id": "silver-thread",
+    "name": "Silver Thread",
+    "primaryHex": "#71717A",
+    "secondaryHex": "#A1A1AA",
+    "accentHex": "#D4D4D8",
+    "stopHex": "#BE123C",
+    "backgroundHex": "#F4F4F5",
+    "backgroundDarkHex": "#1C1C1F",
+    "category": "미니멀"
+  },
+  {
+    "id": "paper-weight",
+    "name": "Paper Weight",
+    "primaryHex": "#57534E",
+    "secondaryHex": "#78716C",
+    "accentHex": "#A8A29E",
+    "stopHex": "#B91C1C",
+    "backgroundHex": "#FAFAF9",
+    "backgroundDarkHex": "#1A1918",
+    "category": "미니멀"
+  },
+  {
+    "id": "ink-wash",
+    "name": "Ink Wash",
+    "primaryHex": "#44403C",
+    "secondaryHex": "#6B6560",
+    "accentHex": "#8A8580",
+    "stopHex": "#D32F2F",
+    "backgroundHex": "#FAF9F7",
+    "backgroundDarkHex": "#1B1A18",
+    "category": "미니멀"
+  },
+  {
+    "id": "quiet-steel",
+    "name": "Quiet Steel",
+    "primaryHex": "#64748B",
+    "secondaryHex": "#94A3B8",
+    "accentHex": "#CBD5E1",
+    "stopHex": "#C62828",
+    "backgroundHex": "#F8FAFC",
+    "backgroundDarkHex": "#1A1D24",
+    "category": "미니멀"
+  },
+  {
+    "id": "concrete-calm",
+    "name": "Concrete Calm",
+    "primaryHex": "#737373",
+    "secondaryHex": "#8B8B8B",
+    "accentHex": "#BFBFBF",
+    "stopHex": "#D50000",
+    "backgroundHex": "#F5F5F5",
+    "backgroundDarkHex": "#1A1A1A",
+    "category": "미니멀"
+  },
+  {
+    "id": "ash-journal",
+    "name": "Ash Journal",
+    "primaryHex": "#505050",
+    "secondaryHex": "#787878",
+    "accentHex": "#B0B0B0",
+    "stopHex": "#C62828",
+    "backgroundHex": "#F7F7F7",
+    "backgroundDarkHex": "#1C1C1C",
+    "category": "미니멀"
+  },
+  {
+    "id": "dust-veil",
+    "name": "Dust Veil",
+    "primaryHex": "#6E6A65",
+    "secondaryHex": "#958F87",
+    "accentHex": "#C4BEB6",
+    "stopHex": "#BF360C",
+    "backgroundHex": "#F9F8F6",
+    "backgroundDarkHex": "#1D1C1A",
+    "category": "미니멀"
+  },
+  {
+    "id": "cloud-linen",
+    "name": "Cloud Linen",
+    "primaryHex": "#7C7C7C",
+    "secondaryHex": "#999999",
+    "accentHex": "#C9C9C9",
+    "stopHex": "#E53935",
+    "backgroundHex": "#FBFBFB",
+    "backgroundDarkHex": "#191919",
+    "category": "미니멀"
+  },
+  {
+    "id": "pencil-draft",
+    "name": "Pencil Draft",
+    "primaryHex": "#4B5563",
+    "secondaryHex": "#6B7280",
+    "accentHex": "#9CA3AF",
+    "stopHex": "#DD2C00",
+    "backgroundHex": "#F3F4F6",
+    "backgroundDarkHex": "#1B1D21",
+    "category": "미니멀"
+  },
+  {
+    "id": "muted-bone",
+    "name": "Muted Bone",
+    "primaryHex": "#8D8680",
+    "secondaryHex": "#A39E98",
+    "accentHex": "#C8C3BD",
+    "stopHex": "#D32F2F",
+    "backgroundHex": "#FAF8F5",
+    "backgroundDarkHex": "#1E1D1B",
+    "category": "미니멀"
+  },
+
+  {
+    "id": "cinnamon-glow",
+    "name": "Cinnamon Glow",
+    "primaryHex": "#D2691E",
+    "secondaryHex": "#A0522D",
+    "accentHex": "#F0C987",
+    "stopHex": "#B71C1C",
+    "backgroundHex": "#FDF6EE",
+    "backgroundDarkHex": "#221A14",
+    "category": "따뜻한"
+  },
+  {
+    "id": "copper-flame",
+    "name": "Copper Flame",
+    "primaryHex": "#B87333",
+    "secondaryHex": "#8B5E3C",
+    "accentHex": "#E8A45C",
+    "stopHex": "#C62828",
+    "backgroundHex": "#FFF5EB",
+    "backgroundDarkHex": "#211C16",
+    "category": "따뜻한"
+  },
+  {
+    "id": "burnt-sienna",
+    "name": "Burnt Sienna",
+    "primaryHex": "#A0522D",
+    "secondaryHex": "#8B4513",
+    "accentHex": "#DEB887",
+    "stopHex": "#D50000",
+    "backgroundHex": "#FDF4ED",
+    "backgroundDarkHex": "#201A15",
+    "category": "따뜻한"
+  },
+  {
+    "id": "roasted-clay",
+    "name": "Roasted Clay",
+    "primaryHex": "#CB6D51",
+    "secondaryHex": "#A1573F",
+    "accentHex": "#F2C49B",
+    "stopHex": "#BF360C",
+    "backgroundHex": "#FFF3EB",
+    "backgroundDarkHex": "#231B16",
+    "category": "따뜻한"
+  },
+  {
+    "id": "maple-hearth",
+    "name": "Maple Hearth",
+    "primaryHex": "#D4603A",
+    "secondaryHex": "#B04A30",
+    "accentHex": "#F7C08A",
+    "stopHex": "#C41E1E",
+    "backgroundHex": "#FFF6EF",
+    "backgroundDarkHex": "#221C17",
+    "category": "따뜻한"
+  },
+  {
+    "id": "ember-drift",
+    "name": "Ember Drift",
+    "primaryHex": "#E25033",
+    "secondaryHex": "#B8412E",
+    "accentHex": "#FFAB76",
+    "stopHex": "#D32F2F",
+    "backgroundHex": "#FFF4ED",
+    "backgroundDarkHex": "#231A15",
+    "category": "따뜻한"
+  },
+  {
+    "id": "ginger-bloom",
+    "name": "Ginger Bloom",
+    "primaryHex": "#CC5803",
+    "secondaryHex": "#A34506",
+    "accentHex": "#FFB74D",
+    "stopHex": "#B71C1C",
+    "backgroundHex": "#FFF7EE",
+    "backgroundDarkHex": "#221D16",
+    "category": "따뜻한"
+  },
+  {
+    "id": "rust-canvas",
+    "name": "Rust Canvas",
+    "primaryHex": "#BF4E30",
+    "secondaryHex": "#964028",
+    "accentHex": "#E8AD70",
+    "stopHex": "#C62828",
+    "backgroundHex": "#FEF3EC",
+    "backgroundDarkHex": "#201B15",
+    "category": "따뜻한"
+  },
+  {
+    "id": "paprika-dawn",
+    "name": "Paprika Dawn",
+    "primaryHex": "#D14B28",
+    "secondaryHex": "#9C3D22",
+    "accentHex": "#F4A76C",
+    "stopHex": "#DD2C00",
+    "backgroundHex": "#FFF5EC",
+    "backgroundDarkHex": "#231B14",
+    "category": "따뜻한"
+  },
+
+  {
+    "id": "arctic-tide",
+    "name": "Arctic Tide",
+    "primaryHex": "#1565C0",
+    "secondaryHex": "#0D47A1",
+    "accentHex": "#64B5F6",
+    "stopHex": "#C62828",
+    "backgroundHex": "#EFF5FC",
+    "backgroundDarkHex": "#181D26",
+    "category": "차가운"
+  },
+  {
+    "id": "steel-harbor",
+    "name": "Steel Harbor",
+    "primaryHex": "#37474F",
+    "secondaryHex": "#546E7A",
+    "accentHex": "#80CBC4",
+    "stopHex": "#D50000",
+    "backgroundHex": "#ECEFF1",
+    "backgroundDarkHex": "#1A1E21",
+    "category": "차가운"
+  },
+  {
+    "id": "glacier-edge",
+    "name": "Glacier Edge",
+    "primaryHex": "#039BE5",
+    "secondaryHex": "#0277BD",
+    "accentHex": "#81D4FA",
+    "stopHex": "#B71C1C",
+    "backgroundHex": "#EDF7FD",
+    "backgroundDarkHex": "#171E25",
+    "category": "차가운"
+  },
+  {
+    "id": "cobalt-mirror",
+    "name": "Cobalt Mirror",
+    "primaryHex": "#1A5276",
+    "secondaryHex": "#2E86C1",
+    "accentHex": "#7FB3D8",
+    "stopHex": "#C53030",
+    "backgroundHex": "#EEF4F9",
+    "backgroundDarkHex": "#191E24",
+    "category": "차가운"
+  },
+  {
+    "id": "teal-current",
+    "name": "Teal Current",
+    "primaryHex": "#00838F",
+    "secondaryHex": "#00695C",
+    "accentHex": "#4DD0E1",
+    "stopHex": "#D32F2F",
+    "backgroundHex": "#EBF8F9",
+    "backgroundDarkHex": "#182022",
+    "category": "차가운"
+  },
+  {
+    "id": "frost-lake",
+    "name": "Frost Lake",
+    "primaryHex": "#2196F3",
+    "secondaryHex": "#1976D2",
+    "accentHex": "#90CAF9",
+    "stopHex": "#E53935",
+    "backgroundHex": "#F0F6FE",
+    "backgroundDarkHex": "#1A1F27",
+    "category": "차가운"
+  },
+  {
+    "id": "deep-fjord",
+    "name": "Deep Fjord",
+    "primaryHex": "#1B3A5C",
+    "secondaryHex": "#2D5F8A",
+    "accentHex": "#6EB2D4",
+    "stopHex": "#C62828",
+    "backgroundHex": "#EEF2F7",
+    "backgroundDarkHex": "#171B22",
+    "category": "차가운"
+  },
+  {
+    "id": "winter-flint",
+    "name": "Winter Flint",
+    "primaryHex": "#455A64",
+    "secondaryHex": "#607D8B",
+    "accentHex": "#B0BEC5",
+    "stopHex": "#BF360C",
+    "backgroundHex": "#F0F3F5",
+    "backgroundDarkHex": "#1A1D20",
+    "category": "차가운"
+  },
+  {
+    "id": "sapphire-haze",
+    "name": "Sapphire Haze",
+    "primaryHex": "#283593",
+    "secondaryHex": "#3F51B5",
+    "accentHex": "#7986CB",
+    "stopHex": "#DD2C00",
+    "backgroundHex": "#F0F1F9",
+    "backgroundDarkHex": "#191B26",
+    "category": "차가운"
+  },
+  {
+    "id": "storm-glass",
+    "name": "Storm Glass",
+    "primaryHex": "#3B6978",
+    "secondaryHex": "#557B83",
+    "accentHex": "#98C1D9",
+    "stopHex": "#D50000",
+    "backgroundHex": "#EFF5F7",
+    "backgroundDarkHex": "#1A2024",
+    "category": "차가운"
+  },
+
+  {
+    "id": "fern-valley",
+    "name": "Fern Valley",
+    "primaryHex": "#2E7D32",
+    "secondaryHex": "#388E3C",
+    "accentHex": "#81C784",
+    "stopHex": "#C62828",
+    "backgroundHex": "#F1F8F2",
+    "backgroundDarkHex": "#1A211B",
+    "category": "자연"
+  },
+  {
+    "id": "moss-garden",
+    "name": "Moss Garden",
+    "primaryHex": "#4A7C59",
+    "secondaryHex": "#6B8F71",
+    "accentHex": "#A5C9A8",
+    "stopHex": "#D32F2F",
+    "backgroundHex": "#F3F9F4",
+    "backgroundDarkHex": "#1B211C",
+    "category": "자연"
+  },
+  {
+    "id": "olive-grove",
+    "name": "Olive Grove",
+    "primaryHex": "#6B7B3A",
+    "secondaryHex": "#8A9A5B",
+    "accentHex": "#C5D5A3",
+    "stopHex": "#BF360C",
+    "backgroundHex": "#F6F8F1",
+    "backgroundDarkHex": "#1D1F1A",
+    "category": "자연"
+  },
+  {
+    "id": "pine-ridge",
+    "name": "Pine Ridge",
+    "primaryHex": "#1B5E20",
+    "secondaryHex": "#2E7D32",
+    "accentHex": "#66BB6A",
+    "stopHex": "#B71C1C",
+    "backgroundHex": "#EFF7F0",
+    "backgroundDarkHex": "#18201A",
+    "category": "자연"
+  },
+  {
+    "id": "bamboo-shade",
+    "name": "Bamboo Shade",
+    "primaryHex": "#558B2F",
+    "secondaryHex": "#7CB342",
+    "accentHex": "#AED581",
+    "stopHex": "#E53935",
+    "backgroundHex": "#F4F9EF",
+    "backgroundDarkHex": "#1C201A",
+    "category": "자연"
+  },
+  {
+    "id": "cedar-trail",
+    "name": "Cedar Trail",
+    "primaryHex": "#4E6B4A",
+    "secondaryHex": "#6D8B65",
+    "accentHex": "#9CB496",
+    "stopHex": "#D50000",
+    "backgroundHex": "#F2F6F1",
+    "backgroundDarkHex": "#1A1F1A",
+    "category": "자연"
+  },
+  {
+    "id": "jungle-canopy",
+    "name": "Jungle Canopy",
+    "primaryHex": "#0D6E3F",
+    "secondaryHex": "#1A8A52",
+    "accentHex": "#4CAF50",
+    "stopHex": "#C41E1E",
+    "backgroundHex": "#ECF7F0",
+    "backgroundDarkHex": "#17201B",
+    "category": "자연"
+  },
+  {
+    "id": "sage-meadow",
+    "name": "Sage Meadow",
+    "primaryHex": "#6A8D73",
+    "secondaryHex": "#88A68B",
+    "accentHex": "#BDD8BF",
+    "stopHex": "#DD2C00",
+    "backgroundHex": "#F4F8F4",
+    "backgroundDarkHex": "#1C211C",
+    "category": "자연"
+  },
+  {
+    "id": "river-stone",
+    "name": "River Stone",
+    "primaryHex": "#3D7A5F",
+    "secondaryHex": "#5A9178",
+    "accentHex": "#A3CDB3",
+    "stopHex": "#C62828",
+    "backgroundHex": "#EFF7F3",
+    "backgroundDarkHex": "#19201D",
+    "category": "자연"
+  },
+  {
+    "id": "willow-breeze",
+    "name": "Willow Breeze",
+    "primaryHex": "#4D8056",
+    "secondaryHex": "#6B9E72",
+    "accentHex": "#A8D5B0",
+    "stopHex": "#B71C1C",
+    "backgroundHex": "#F2F9F3",
+    "backgroundDarkHex": "#1B221C",
+    "category": "자연"
+  },
+
+  {
+    "id": "plasma-burst",
+    "name": "Plasma Burst",
+    "primaryHex": "#FF006E",
+    "secondaryHex": "#8338EC",
+    "accentHex": "#FFBE0B",
+    "stopHex": "#E63946",
+    "backgroundHex": "#FFF2F8",
+    "backgroundDarkHex": "#201823",
+    "category": "네온"
+  },
+  {
+    "id": "electric-violet",
+    "name": "Electric Violet",
+    "primaryHex": "#7B2FF7",
+    "secondaryHex": "#C77DFF",
+    "accentHex": "#E0AAFF",
+    "stopHex": "#D00000",
+    "backgroundHex": "#F5F0FF",
+    "backgroundDarkHex": "#1B1726",
+    "category": "네온"
+  },
+  {
+    "id": "cyber-lime",
+    "name": "Cyber Lime",
+    "primaryHex": "#AAFF00",
+    "secondaryHex": "#76FF03",
+    "accentHex": "#1DE9B6",
+    "stopHex": "#D50000",
+    "backgroundHex": "#F5FFE8",
+    "backgroundDarkHex": "#1A2016",
+    "category": "네온"
+  },
+  {
+    "id": "hot-magenta",
+    "name": "Hot Magenta",
+    "primaryHex": "#FF00FF",
+    "secondaryHex": "#D500F9",
+    "accentHex": "#EA80FC",
+    "stopHex": "#C62828",
+    "backgroundHex": "#FFF0FF",
+    "backgroundDarkHex": "#211727",
+    "category": "네온"
+  },
+  {
+    "id": "neon-reef",
+    "name": "Neon Reef",
+    "primaryHex": "#00E5FF",
+    "secondaryHex": "#00B8D4",
+    "accentHex": "#84FFFF",
+    "stopHex": "#E53935",
+    "backgroundHex": "#EDFFFE",
+    "backgroundDarkHex": "#162023",
+    "category": "네온"
+  },
+  {
+    "id": "aurora-flash",
+    "name": "Aurora Flash",
+    "primaryHex": "#00E676",
+    "secondaryHex": "#69F0AE",
+    "accentHex": "#B9F6CA",
+    "stopHex": "#D32F2F",
+    "backgroundHex": "#EDFFF3",
+    "backgroundDarkHex": "#16211A",
+    "category": "네온"
+  },
+  {
+    "id": "voltage-orange",
+    "name": "Voltage Orange",
+    "primaryHex": "#FF6D00",
+    "secondaryHex": "#FF9100",
+    "accentHex": "#FFD740",
+    "stopHex": "#BF360C",
+    "backgroundHex": "#FFF6EC",
+    "backgroundDarkHex": "#221D16",
+    "category": "네온"
+  },
+  {
+    "id": "supernova-pink",
+    "name": "Supernova Pink",
+    "primaryHex": "#FF1744",
+    "secondaryHex": "#F50057",
+    "accentHex": "#FF80AB",
+    "stopHex": "#B71C1C",
+    "backgroundHex": "#FFF1F4",
+    "backgroundDarkHex": "#221720",
+    "category": "네온"
+  },
+  {
+    "id": "laser-teal",
+    "name": "Laser Teal",
+    "primaryHex": "#1DE9B6",
+    "secondaryHex": "#00BFA5",
+    "accentHex": "#A7FFEB",
+    "stopHex": "#DD2C00",
+    "backgroundHex": "#EDFFF9",
+    "backgroundDarkHex": "#16221F",
+    "category": "네온"
+  },
+
+  {
+    "id": "lavender-cloud",
+    "name": "Lavender Cloud",
+    "primaryHex": "#B39DDB",
+    "secondaryHex": "#9575CD",
+    "accentHex": "#D1C4E9",
+    "stopHex": "#C62828",
+    "backgroundHex": "#F8F5FD",
+    "backgroundDarkHex": "#1D1A24",
+    "category": "파스텔"
+  },
+  {
+    "id": "peach-sorbet",
+    "name": "Peach Sorbet",
+    "primaryHex": "#FFAB91",
+    "secondaryHex": "#FF8A65",
+    "accentHex": "#FFCCBC",
+    "stopHex": "#D32F2F",
+    "backgroundHex": "#FFF8F5",
+    "backgroundDarkHex": "#221C1A",
+    "category": "파스텔"
+  },
+  {
+    "id": "baby-sky",
+    "name": "Baby Sky",
+    "primaryHex": "#81D4FA",
+    "secondaryHex": "#4FC3F7",
+    "accentHex": "#B3E5FC",
+    "stopHex": "#E53935",
+    "backgroundHex": "#F3FAFF",
+    "backgroundDarkHex": "#1A1E24",
+    "category": "파스텔"
+  },
+  {
+    "id": "cotton-rose",
+    "name": "Cotton Rose",
+    "primaryHex": "#F48FB1",
+    "secondaryHex": "#F06292",
+    "accentHex": "#F8BBD0",
+    "stopHex": "#B71C1C",
+    "backgroundHex": "#FFF5F8",
+    "backgroundDarkHex": "#221A1F",
+    "category": "파스텔"
+  },
+  {
+    "id": "pistachio-milk",
+    "name": "Pistachio Milk",
+    "primaryHex": "#A5D6A7",
+    "secondaryHex": "#81C784",
+    "accentHex": "#C8E6C9",
+    "stopHex": "#D50000",
+    "backgroundHex": "#F4FAF4",
+    "backgroundDarkHex": "#1A211B",
+    "category": "파스텔"
+  },
+  {
+    "id": "butter-cream",
+    "name": "Butter Cream",
+    "primaryHex": "#FFE082",
+    "secondaryHex": "#FFD54F",
+    "accentHex": "#FFF9C4",
+    "stopHex": "#C62828",
+    "backgroundHex": "#FFFDF3",
+    "backgroundDarkHex": "#22201A",
+    "category": "파스텔"
+  },
+  {
+    "id": "lilac-mist",
+    "name": "Lilac Mist",
+    "primaryHex": "#CE93D8",
+    "secondaryHex": "#BA68C8",
+    "accentHex": "#E1BEE7",
+    "stopHex": "#BF360C",
+    "backgroundHex": "#FAF4FC",
+    "backgroundDarkHex": "#201A23",
+    "category": "파스텔"
+  },
+  {
+    "id": "soft-coral",
+    "name": "Soft Coral",
+    "primaryHex": "#EF9A9A",
+    "secondaryHex": "#E57373",
+    "accentHex": "#FFCDD2",
+    "stopHex": "#D32F2F",
+    "backgroundHex": "#FFF5F5",
+    "backgroundDarkHex": "#221A1A",
+    "category": "파스텔"
+  },
+  {
+    "id": "powder-teal",
+    "name": "Powder Teal",
+    "primaryHex": "#80CBC4",
+    "secondaryHex": "#4DB6AC",
+    "accentHex": "#B2DFDB",
+    "stopHex": "#E53935",
+    "backgroundHex": "#F1FAF9",
+    "backgroundDarkHex": "#1A2120",
+    "category": "파스텔"
+  },
+  {
+    "id": "melon-dew",
+    "name": "Melon Dew",
+    "primaryHex": "#FFB74D",
+    "secondaryHex": "#FFA726",
+    "accentHex": "#FFE0B2",
+    "stopHex": "#DD2C00",
+    "backgroundHex": "#FFF9F0",
+    "backgroundDarkHex": "#221F19",
+    "category": "파스텔"
+  },
+  {
+    "id": "blush-petal",
+    "name": "Blush Petal",
+    "primaryHex": "#F8BBD0",
+    "secondaryHex": "#F48FB1",
+    "accentHex": "#FCE4EC",
+    "stopHex": "#C53030",
+    "backgroundHex": "#FFF7FA",
+    "backgroundDarkHex": "#221B1F",
+    "category": "파스텔"
+  },
+  {
+    "id": "wisteria-fog",
+    "name": "Wisteria Fog",
+    "primaryHex": "#B388FF",
+    "secondaryHex": "#7C4DFF",
+    "accentHex": "#D1B3FF",
+    "stopHex": "#B00020",
+    "backgroundHex": "#F7F3FF",
+    "backgroundDarkHex": "#1D1926",
+    "category": "파스텔"
   }
 ]

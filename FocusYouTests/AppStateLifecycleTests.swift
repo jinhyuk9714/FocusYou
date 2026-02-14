@@ -304,6 +304,7 @@ final class AppStateLifecycleTests: XCTestCase {
             BlockedSite.self,
             BlockedApp.self,
             FocusSession.self,
+            BlockSchedule.self,
             configurations: configuration
         )
         return ModelContext(container)
@@ -356,7 +357,7 @@ actor MockBlockingCoordinator: BlockingCoordinating {
     private var lastActivateDomains: [String] = []
     private var lastActivateAppBundleIDs: [String] = []
 
-    func activateBlocking(domains: [String], appBundleIds: [String]) async throws {
+    func activateBlocking(domains: [String], appBundleIds: [String], blocklistMode: String = "blocklist") async throws {
         activateCallCount += 1
         lastActivateDomains = domains
         lastActivateAppBundleIDs = appBundleIds.sorted()

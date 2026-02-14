@@ -23,6 +23,12 @@ final class ProfileViewModel {
     var editorLongBreakMinutes = 15
     var editorCycles = 4
 
+    // v1.3 고급 차단 + 취소 강도 에디터 필드
+    var editorBlocklistMode = "blocklist"
+    var editorIsHardcoreMode = false
+    var editorCancelIntensity = 0
+    var editorCancelLockoutMinutes = 5
+
     /// 유효성 검증 에러
     var validationError: String?
 
@@ -44,6 +50,10 @@ final class ProfileViewModel {
         editorBreakMinutes = 5
         editorLongBreakMinutes = 15
         editorCycles = 4
+        editorBlocklistMode = "blocklist"
+        editorIsHardcoreMode = false
+        editorCancelIntensity = 0
+        editorCancelLockoutMinutes = 5
         validationError = nil
         showEditor = true
     }
@@ -59,6 +69,10 @@ final class ProfileViewModel {
         editorBreakMinutes = profile.breakDuration / 60
         editorLongBreakMinutes = profile.longBreakDuration / 60
         editorCycles = profile.pomodoroCount
+        editorBlocklistMode = profile.blocklistMode ?? "blocklist"
+        editorIsHardcoreMode = profile.isHardcoreMode ?? false
+        editorCancelIntensity = profile.cancelIntensity ?? 0
+        editorCancelLockoutMinutes = profile.cancelLockoutMinutes ?? 5
         validationError = nil
         showEditor = true
     }
@@ -81,6 +95,10 @@ final class ProfileViewModel {
             existing.breakDuration = editorBreakMinutes * 60
             existing.longBreakDuration = editorLongBreakMinutes * 60
             existing.pomodoroCount = editorCycles
+            existing.blocklistMode = editorBlocklistMode
+            existing.isHardcoreMode = editorIsHardcoreMode
+            existing.cancelIntensity = editorCancelIntensity
+            existing.cancelLockoutMinutes = editorCancelLockoutMinutes
             logger.info("프로필 수정: \(trimmedName)")
         } else {
             let profile = BlockProfile(name: trimmedName, icon: editorIcon, color: editorColor)
@@ -89,6 +107,10 @@ final class ProfileViewModel {
             profile.breakDuration = editorBreakMinutes * 60
             profile.longBreakDuration = editorLongBreakMinutes * 60
             profile.pomodoroCount = editorCycles
+            profile.blocklistMode = editorBlocklistMode
+            profile.isHardcoreMode = editorIsHardcoreMode
+            profile.cancelIntensity = editorCancelIntensity
+            profile.cancelLockoutMinutes = editorCancelLockoutMinutes
             modelContext.insert(profile)
             logger.info("프로필 생성: \(trimmedName)")
         }

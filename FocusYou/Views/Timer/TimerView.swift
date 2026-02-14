@@ -6,29 +6,85 @@ import SwiftData
 struct IdleContentView: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(SettingsViewModel.self) private var settingsViewModel
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel = TimerViewModel()
+    @State private var showIntentionInput = false
+    @State private var intentionText = ""
+    @State private var burnoutDetector = BurnoutDetector.shared
     @Namespace private var modeNamespace
 
     @Query(sort: \BlockProfile.createdAt)
     private var profiles: [BlockProfile]
 
+    @Query(sort: \FocusSession.startedAt, order: .reverse)
+    private var allSessions: [FocusSession]
+
+    /// 최근 의도 (완료 세션에서 중복 제거, 최대 5개)
+    private var recentIntentions: [String] {
+        var seen = Set<String>()
+        var result = [String]()
+        for session in allSessions where session.wasCompleted {
+            guard let intention = session.intention,
+                  !intention.isEmpty,
+                  !seen.contains(intention) else { continue }
+            seen.insert(intention)
+            result.append(intention)
+            if result.count >= 5 { break }
+        }
+        return result
+    }
+
     var body: some View {
         VStack(spacing: Constants.Design.spacingLG) {
-            profileSelector
-            modePicker
-            timerDisplay
-            timerOptions
-            blockSummary
-            startButton
-            profileQuickStart
+            // 번아웃 배너 (v1.5)
+            if burnoutDetector.showBanner {
+                BurnoutBannerView(
+                    message: burnoutDetector.bannerMessage,
+                    onDismiss: { burnoutDetector.dismissBanner() }
+                )
+            }
+
+            if showIntentionInput {
+                IntentionInputView(
+                    intentionText: $intentionText,
+                    recentIntentions: recentIntentions,
+                    onStart: { intention in
+                        startSessionWithIntention(intention)
+                    },
+                    onSkip: {
+                        startSessionWithIntention(nil)
+                    }
+                )
+            } else {
+                profileSelector
+                modePicker
+                timerDisplay
+                timerOptions
+                blockSummary
+                startButton
+                profileQuickStart
+            }
         }
+        .animation(.mediumEase, value: showIntentionInput)
         .onAppear {
             appState.ensureActiveProfile(in: profiles)
+            updateBurnoutBanner()
         }
         .onChange(of: profiles.count) { _, _ in
             appState.ensureActiveProfile(in: profiles)
         }
+    }
+
+    private func updateBurnoutBanner() {
+        let todayStart = Date().startOfDay
+        let todaySeconds = allSessions
+            .filter { $0.startedAt >= todayStart && $0.sessionType == "focus" }
+            .reduce(0) { $0 + $1.actualDuration }
+        burnoutDetector.updateBanner(
+            todayFocusSeconds: todaySeconds,
+            dailyLimitHours: settingsViewModel.burnoutDailyLimitHours
+        )
     }
 
     private var activeProfile: BlockProfile? {
@@ -232,15 +288,10 @@ struct IdleContentView: View {
 
     private var startButton: some View {
         Button {
-            Task {
-                await appState.startFocusSession(
-                    duration: viewModel.initialDurationSeconds,
-                    sites: activeSites,
-                    apps: activeApps,
-                    modelContext: modelContext,
-                    mode: viewModel.selectedMode.appStateMode,
-                    pomodoroConfiguration: viewModel.pomodoroConfiguration
-                )
+            if settingsViewModel.showIntentionInput {
+                showIntentionInput = true
+            } else {
+                startSessionWithIntention(nil)
             }
         } label: {
             Label(
@@ -252,6 +303,22 @@ struct IdleContentView: View {
         .disabled(activeProfile == nil)
         .accessibilityLabel("집중 시작")
         .accessibilityHint("타이머를 시작하고 사이트와 앱 차단을 활성화합니다")
+    }
+
+    private func startSessionWithIntention(_ intention: String?) {
+        Task {
+            await appState.startFocusSession(
+                duration: viewModel.initialDurationSeconds,
+                sites: activeSites,
+                apps: activeApps,
+                modelContext: modelContext,
+                mode: viewModel.selectedMode.appStateMode,
+                pomodoroConfiguration: viewModel.pomodoroConfiguration,
+                intention: intention
+            )
+        }
+        showIntentionInput = false
+        intentionText = ""
     }
 
     // MARK: - 프로필 빠른 시작
@@ -321,6 +388,7 @@ struct FocusingContentView: View {
                 countdownDisplay
                 capsuleProgressBar
                 statusBadge
+                intentionBadge
                 controlButtons
             }
         }
@@ -504,50 +572,155 @@ struct FocusingContentView: View {
         }
     }
 
+    // MARK: - 의도 뱃지
+
+    @ViewBuilder
+    private var intentionBadge: some View {
+        if let intention = appState.currentSession?.intention, !intention.isEmpty {
+            HStack(spacing: 4) {
+                Image(systemName: "target")
+                    .font(.caption2)
+                Text(intention)
+                    .font(.caption)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(themeManager.primary.opacity(0.08), in: Capsule())
+            .foregroundStyle(themeManager.primary.opacity(0.8))
+        }
+    }
+
     // MARK: - 컨트롤 버튼
 
     private var controlButtons: some View {
-        HStack(spacing: Constants.Design.spacingMD) {
-            if isFlowmodoroFocus {
-                // 플로우모도로 집중 중: "집중 완료" 주요 버튼
-                Button {
-                    Task {
-                        await appState.finishFlowmodoroFocus(modelContext: modelContext)
+        VStack(spacing: Constants.Design.spacingSM) {
+            HStack(spacing: Constants.Design.spacingMD) {
+                if isFlowmodoroFocus {
+                    // 플로우모도로 집중 중: "집중 완료" 주요 버튼
+                    Button {
+                        Task {
+                            await appState.finishFlowmodoroFocus(modelContext: modelContext)
+                        }
+                    } label: {
+                        Label("집중 완료", systemImage: "checkmark.circle.fill")
                     }
-                } label: {
-                    Label("집중 완료", systemImage: "checkmark.circle.fill")
+                    .primaryActionStyle(color: flowmodoroColor)
+
+                    cancelButton
+                } else {
+                    Button {
+                        withAnimation(.focusSpring) {
+                            if appState.focusState == .paused {
+                                appState.resumeSession()
+                            } else {
+                                appState.pauseSession()
+                            }
+                        }
+                    } label: {
+                        Label(
+                            appState.focusState == .paused ? "재개" : "일시정지",
+                            systemImage: appState.focusState == .paused ? "play.fill" : "pause.fill"
+                        )
+                    }
+                    .secondaryActionStyle(color: themeManager.pauseButton)
+
+                    cancelButton
                 }
-                .primaryActionStyle(color: flowmodoroColor)
+            }
+
+            // 취소 잠금 상태 표시
+            cancelLockoutBadge
+        }
+    }
+
+    // MARK: - 취소 강도별 버튼
+
+    @ViewBuilder
+    private var cancelButton: some View {
+        switch appState.currentCancelIntensity {
+        case 2:
+            // 하드코어: 비상 해제만 가능
+            if appState.isEmergencyUnlockActive {
+                emergencyUnlockView
+            } else {
+                Button {
+                    appState.requestEmergencyUnlock()
+                } label: {
+                    Label("비상 해제", systemImage: "exclamationmark.shield.fill")
+                }
+                .secondaryActionStyle(color: themeManager.stopButton)
+                .disabled(appState.emergencyUnlockUsedToday)
+            }
+        case 1:
+            // 강함: 잠금 시간 중에는 비활성
+            Button {
+                viewModel.requestStop()
+            } label: {
+                Label("중지", systemImage: "stop.fill")
+            }
+            .secondaryActionStyle(color: themeManager.stopButton)
+            .disabled(!appState.canCancel)
+        default:
+            // 기본: 확인 다이얼로그
+            Button {
+                viewModel.requestStop()
+            } label: {
+                Label("중지", systemImage: "stop.fill")
+            }
+            .secondaryActionStyle(color: themeManager.stopButton)
+        }
+    }
+
+    @ViewBuilder
+    private var cancelLockoutBadge: some View {
+        if appState.currentCancelIntensity == 1, !appState.canCancel {
+            HStack(spacing: 4) {
+                Image(systemName: "lock.fill")
+                    .font(.caption2)
+                Text("중지 잠금 \(Int(appState.cancelLockoutRemainingSeconds))초 남음")
+                    .font(.caption)
+                    .monospacedDigit()
+            }
+            .foregroundStyle(themeManager.stopButton.opacity(0.7))
+        } else if appState.currentCancelIntensity == 2 && !appState.isEmergencyUnlockActive {
+            HStack(spacing: 4) {
+                Image(systemName: "lock.shield.fill")
+                    .font(.caption2)
+                Text(
+                    appState.emergencyUnlockUsedToday
+                        ? "오늘 비상 해제를 이미 사용했습니다"
+                        : "하드코어 모드 — 비상 해제만 가능"
+                )
+                .font(.caption)
+            }
+            .foregroundStyle(themeManager.stopButton.opacity(0.7))
+        }
+    }
+
+    @ViewBuilder
+    private var emergencyUnlockView: some View {
+        VStack(spacing: Constants.Design.spacingSM) {
+            if appState.emergencyUnlockCountdown > 0 {
+                Text("\(Int(appState.emergencyUnlockCountdown))초 대기 중...")
+                    .font(.callout.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(themeManager.stopButton)
 
                 Button {
-                    viewModel.requestStop()
+                    appState.cancelEmergencyUnlock()
                 } label: {
                     Label("취소", systemImage: "xmark")
                 }
-                .secondaryActionStyle(color: themeManager.stopButton)
+                .secondaryActionStyle(color: .secondary)
             } else {
                 Button {
-                    withAnimation(.focusSpring) {
-                        if appState.focusState == .paused {
-                            appState.resumeSession()
-                        } else {
-                            appState.pauseSession()
-                        }
+                    Task {
+                        await appState.confirmEmergencyUnlock(modelContext: modelContext)
                     }
                 } label: {
-                    Label(
-                        appState.focusState == .paused ? "재개" : "일시정지",
-                        systemImage: appState.focusState == .paused ? "play.fill" : "pause.fill"
-                    )
+                    Label("비상 해제 확인", systemImage: "exclamationmark.triangle.fill")
                 }
-                .secondaryActionStyle(color: themeManager.pauseButton)
-
-                Button {
-                    viewModel.requestStop()
-                } label: {
-                    Label("중지", systemImage: "stop.fill")
-                }
-                .secondaryActionStyle(color: themeManager.stopButton)
+                .primaryActionStyle(color: themeManager.stopButton)
             }
         }
     }
@@ -606,26 +779,62 @@ struct FocusingContentView: View {
 struct CompletedContentView: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(SettingsViewModel.self) private var settingsViewModel
     @Query(sort: \FocusSession.startedAt, order: .reverse)
     private var sessions: [FocusSession]
     @State private var checkScale: CGFloat = 0
     @State private var showSummary = false
     @State private var confettiParticles: [ConfettiParticle] = []
+    @State private var retrospectCompleted = false
 
     private var streakInfo: StreakCalculator.StreakInfo {
         StreakCalculator.calculate(from: sessions)
     }
 
     var body: some View {
-        VStack(spacing: Constants.Design.spacingXL) {
-            celebrationIcon
-            summaryContent
-            confirmButton
+        ZStack {
+            VStack(spacing: Constants.Design.spacingXL) {
+                celebrationIcon
+                summaryContent
+                retrospectSection
+                confirmButton
+            }
+
+            // 마일스톤 축하 오버레이 (v1.5)
+            if let milestone = appState.pendingMilestone {
+                MilestoneCelebrationView(
+                    milestone: milestone,
+                    onDismiss: { appState.pendingMilestone = nil }
+                )
+            }
         }
         .padding(.vertical, Constants.Design.spacingSM)
         .onAppear {
             playCelebration()
             appState.lastCompletedStreakInfo = streakInfo
+        }
+    }
+
+    // MARK: - 회고 섹션
+
+    @ViewBuilder
+    private var retrospectSection: some View {
+        if settingsViewModel.showRetrospect && showSummary && !retrospectCompleted {
+            RetrospectView(
+                level: settingsViewModel.retrospectLevel,
+                onComplete: { data in
+                    appState.saveRetrospectFull(
+                        emoji: data.emoji,
+                        text: data.text,
+                        rating: data.rating
+                    )
+                    retrospectCompleted = true
+                },
+                onSkip: {
+                    retrospectCompleted = true
+                }
+            )
+            .transition(.move(edge: .bottom).combined(with: .opacity))
         }
     }
 
@@ -667,6 +876,14 @@ struct CompletedContentView: View {
                     .font(.title3.bold())
 
                 VStack(spacing: Constants.Design.spacingSM) {
+                    if let intention = appState.lastCompletedIntention, !intention.isEmpty {
+                        summaryRow(
+                            icon: "target",
+                            color: themeManager.accent,
+                            text: intention
+                        )
+                    }
+
                     summaryRow(
                         icon: "clock.fill",
                         color: themeManager.primary,
@@ -684,7 +901,7 @@ struct CompletedContentView: View {
                     if streakInfo.current > 0 {
                         summaryRow(
                             icon: "flame.fill",
-                            color: .orange,
+                            color: themeManager.warning,
                             text: "\(streakInfo.current)일 연속 집중!"
                         )
                     }
@@ -791,6 +1008,7 @@ private struct ConfettiParticle: Identifiable {
     IdleContentView()
         .environment(AppState())
         .environment(ThemeManager.shared)
+        .environment(SettingsViewModel())
         .frame(width: 340)
         .padding()
 }
@@ -807,6 +1025,7 @@ private struct ConfettiParticle: Identifiable {
     CompletedContentView()
         .environment(AppState())
         .environment(ThemeManager.shared)
+        .environment(SettingsViewModel())
         .frame(width: 340)
         .padding()
 }

@@ -21,6 +21,9 @@ struct MainDashboardView: View {
     @State private var pomodoroConfiguration: PomodoroConfiguration = .default
     @State private var isSessionActionInFlight = false
     @State private var showThemePicker = false
+    @State private var showDashIntentionInput = false
+    @State private var dashIntentionText = ""
+    @State private var dashRetrospectCompleted = false
     @Namespace private var dashModeNamespace
 
     var body: some View {
@@ -112,7 +115,7 @@ struct MainDashboardView: View {
                 systemImage: "exclamationmark.shield.fill"
             )
             .font(.callout.weight(.semibold))
-            .foregroundStyle(.orange)
+            .foregroundStyle(themeManager.warning)
 
             Text("iCloud Private Relay가 켜져 있어 Safari에서 웹사이트 차단이 우회됩니다. 아래 방법 중 하나를 선택하세요.")
                 .font(.callout)
@@ -134,7 +137,7 @@ struct MainDashboardView: View {
                     Label("Private Relay 설정 열기", systemImage: "gear")
                         .frame(maxWidth: .infinity)
                 }
-                .primaryActionStyle(color: .orange)
+                .primaryActionStyle(color: themeManager.warning)
             }
 
             Button {
@@ -148,7 +151,7 @@ struct MainDashboardView: View {
         .frostedCard()
         .overlay(
             RoundedRectangle(cornerRadius: Constants.Design.cornerLG)
-                .stroke(Color.orange.opacity(0.15), lineWidth: 0.5)
+                .stroke(themeManager.warning.opacity(0.15), lineWidth: 0.5)
         )
     }
 
@@ -251,15 +254,66 @@ struct MainDashboardView: View {
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity)
 
-            Button {
-                startSessionFromDashboard()
-            } label: {
-                Label(startButtonTitle, systemImage: "bolt.fill")
+            if showDashIntentionInput {
+                dashIntentionInputSection
+            } else {
+                Button {
+                    if settingsViewModel.showIntentionInput {
+                        showDashIntentionInput = true
+                    } else {
+                        startSessionFromDashboard(intention: nil)
+                    }
+                } label: {
+                    Label(startButtonTitle, systemImage: "bolt.fill")
+                }
+                .primaryActionStyle(color: themeManager.startButton)
+                .disabled(isSessionActionInFlight || activeProfile == nil)
             }
-            .primaryActionStyle(color: themeManager.startButton)
-            .disabled(isSessionActionInFlight || activeProfile == nil)
         }
         .frostedCard()
+        .animation(.mediumEase, value: showDashIntentionInput)
+    }
+
+    private var dashIntentionInputSection: some View {
+        VStack(spacing: Constants.Design.spacingMD) {
+            HStack(spacing: Constants.Design.spacingSM) {
+                Image(systemName: "target")
+                    .foregroundStyle(themeManager.primary)
+                Text("이번 세션의 의도")
+                    .font(.callout.weight(.medium))
+            }
+
+            TextField("무엇에 집중할까요?", text: $dashIntentionText)
+                .textFieldStyle(.plain)
+                .font(.callout)
+                .padding(Constants.Design.spacingMD)
+                .background(
+                    Color.secondary.opacity(0.06),
+                    in: RoundedRectangle(cornerRadius: Constants.Design.cornerMD)
+                )
+                .onSubmit {
+                    let trimmed = dashIntentionText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    startSessionFromDashboard(intention: trimmed.isEmpty ? nil : trimmed)
+                }
+
+            HStack(spacing: Constants.Design.spacingMD) {
+                Button {
+                    startSessionFromDashboard(intention: nil)
+                } label: {
+                    Text("건너뛰기")
+                }
+                .secondaryActionStyle(color: .secondary)
+
+                Button {
+                    let trimmed = dashIntentionText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    startSessionFromDashboard(intention: trimmed.isEmpty ? nil : trimmed)
+                } label: {
+                    Label("집중 시작", systemImage: "bolt.fill")
+                }
+                .primaryActionStyle(color: themeManager.startButton)
+                .disabled(isSessionActionInFlight)
+            }
+        }
     }
 
     private var activeProfilePicker: some View {
@@ -413,6 +467,17 @@ struct MainDashboardView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
+                if let intention = appState.currentSession?.intention, !intention.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "target")
+                            .font(.caption2)
+                        Text(intention)
+                            .font(.caption)
+                            .lineLimit(1)
+                    }
+                    .foregroundStyle(themeManager.primary.opacity(0.8))
+                }
+
                 HStack(spacing: Constants.Design.spacingSM) {
                     if isDashFlowmodoroFocus {
                         Button {
@@ -479,33 +544,66 @@ struct MainDashboardView: View {
 
     // 완료 → 축하
     private var completedHero: some View {
-        HStack(spacing: Constants.Design.spacingLG) {
-            IconBadge(systemName: "checkmark.circle.fill", color: themeManager.completed, size: 44)
+        VStack(spacing: Constants.Design.spacingMD) {
+            HStack(spacing: Constants.Design.spacingLG) {
+                IconBadge(systemName: "checkmark.circle.fill", color: themeManager.completed, size: 44)
 
-            VStack(alignment: .leading, spacing: Constants.Design.spacingXS) {
-                HStack(spacing: Constants.Design.spacingSM) {
-                    Text("세션 완료!")
-                        .font(.headline)
-                    if currentStreakDays > 0 {
-                        Text("\(currentStreakDays)일 연속")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.orange)
+                VStack(alignment: .leading, spacing: Constants.Design.spacingXS) {
+                    HStack(spacing: Constants.Design.spacingSM) {
+                        Text("세션 완료!")
+                            .font(.headline)
+                        if let emoji = appState.completedSession?.retrospectEmoji {
+                            Text(emoji)
+                        }
+                        if currentStreakDays > 0 {
+                            Text("\(currentStreakDays)일 연속")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(themeManager.warning)
+                        }
                     }
+                    if let intention = appState.lastCompletedIntention, !intention.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "target")
+                                .font(.caption2)
+                            Text(intention)
+                                .font(.caption)
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(themeManager.accent)
+                    }
+                    Text(appState.completedSummaryText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-                Text(appState.completedSummaryText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Button {
+                    appState.resetToIdle()
+                    dashRetrospectCompleted = false
+                } label: {
+                    Label("확인", systemImage: "checkmark")
+                }
+                .primaryActionStyle(color: themeManager.primary)
+                .frame(width: 100)
             }
 
-            Spacer()
-
-            Button {
-                appState.resetToIdle()
-            } label: {
-                Label("확인", systemImage: "checkmark")
+            if settingsViewModel.showRetrospect && !dashRetrospectCompleted {
+                RetrospectView(
+                    level: settingsViewModel.retrospectLevel,
+                    onComplete: { data in
+                        appState.saveRetrospectFull(
+                            emoji: data.emoji,
+                            text: data.text,
+                            rating: data.rating
+                        )
+                        dashRetrospectCompleted = true
+                    },
+                    onSkip: {
+                        dashRetrospectCompleted = true
+                    }
+                )
             }
-            .primaryActionStyle(color: themeManager.primary)
-            .frame(width: 100)
         }
         .frostedCard()
     }
@@ -534,7 +632,7 @@ struct MainDashboardView: View {
             )
             statCard(
                 icon: "flame.fill",
-                color: .orange,
+                color: themeManager.warning,
                 value: "\(currentStreakDays)일",
                 label: "연속 집중"
             )
@@ -716,10 +814,24 @@ struct MainDashboardView: View {
 
     private func sessionRow(_ session: FocusSession, isEven: Bool) -> some View {
         HStack(spacing: Constants.Design.spacingMD) {
-            Text(session.timerMode == "pomodoro" ? "뽀모도로" : session.timerMode == "flowmodoro" ? "플로우" : "자유")
-                .font(.callout.weight(.medium))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(session.timerMode == "pomodoro" ? "뽀모도로" : session.timerMode == "flowmodoro" ? "플로우" : "자유")
+                    .font(.callout.weight(.medium))
+
+                if let intention = session.intention, !intention.isEmpty {
+                    Text(intention)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+            }
 
             Spacer()
+
+            if let emoji = session.retrospectEmoji {
+                Text(emoji)
+                    .font(.caption)
+            }
 
             Text(TimeInterval(session.actualDuration).formattedAsReadable)
                 .font(.caption.monospacedDigit())
@@ -785,7 +897,7 @@ struct MainDashboardView: View {
 
     // MARK: - 세션 액션
 
-    private func startSessionFromDashboard() {
+    private func startSessionFromDashboard(intention: String? = nil) {
         guard !isSessionActionInFlight else { return }
         isSessionActionInFlight = true
 
@@ -806,9 +918,12 @@ struct MainDashboardView: View {
                 apps: activeApps,
                 modelContext: modelContext,
                 mode: quickStartMode,
-                pomodoroConfiguration: pomodoroConfiguration
+                pomodoroConfiguration: pomodoroConfiguration,
+                intention: intention
             )
             isSessionActionInFlight = false
+            showDashIntentionInput = false
+            dashIntentionText = ""
         }
     }
 

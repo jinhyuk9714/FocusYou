@@ -9,7 +9,8 @@ protocol BlockingCoordinating: Sendable {
 
     func activateBlocking(
         domains: [String],
-        appBundleIds: [String]
+        appBundleIds: [String],
+        blocklistMode: String
     ) async throws
 
     func deactivateBlocking() async throws
@@ -53,9 +54,10 @@ actor BlockingCoordinator {
     /// 차단 활성화 (타이머 시작 시 호출)
     func activateBlocking(
         domains: [String],
-        appBundleIds: [String]
+        appBundleIds: [String],
+        blocklistMode: String = "blocklist"
     ) async throws {
-        logger.info("차단 활성화 시작: 사이트 \(domains.count)개, 앱 \(appBundleIds.count)개")
+        logger.info("차단 활성화 시작: 사이트 \(domains.count)개, 앱 \(appBundleIds.count)개, 모드: \(blocklistMode)")
 
         guard !domains.isEmpty || !appBundleIds.isEmpty else {
             logger.info("차단 대상이 없어 활성화 건너뜀")
@@ -69,10 +71,21 @@ actor BlockingCoordinator {
         isAppBlockingActive = false
 
         // 웹사이트 차단
-        if !domains.isEmpty {
+        if !domains.isEmpty || blocklistMode == "allowlist" {
             do {
-                try await websiteBlocker.activate(domains: domains)
-                isWebsiteBlockingActive = true
+                if blocklistMode == "allowlist" {
+                    // 화이트리스트 모드: top-sites에서 허용 도메인 제외 후 나머지 차단
+                    let topSites = loadTopSites()
+                    let allowedSet = Set(domains.map { $0.lowercased() })
+                    let domainsToBlock = topSites.filter { !allowedSet.contains($0.lowercased()) }
+                    if !domainsToBlock.isEmpty {
+                        try await websiteBlocker.activate(domains: domainsToBlock)
+                        isWebsiteBlockingActive = true
+                    }
+                } else {
+                    try await websiteBlocker.activate(domains: domains)
+                    isWebsiteBlockingActive = true
+                }
             } catch {
                 logger.error("웹사이트 차단 실패: \(error.localizedDescription)")
                 state = .error(error as? FocusYouError ?? .hostsFileWriteFailed)
@@ -94,6 +107,18 @@ actor BlockingCoordinator {
         }
 
         state = .blocking
+
+        // 앱 디밍 (v1.4)
+        if !appBundleIds.isEmpty,
+           UserDefaults.standard.bool(forKey: Constants.Settings.enableAppDimmingKey) {
+            let opacity = UserDefaults.standard.double(forKey: Constants.Settings.dimmingOpacityKey)
+            let effectiveOpacity = opacity > 0 ? opacity : Constants.Settings.dimmingOpacityDefault
+            await AppDimmingManager.shared.activate(
+                bundleIds: appBundleIds,
+                opacity: effectiveOpacity
+            )
+        }
+
         logger.info("차단 활성화 완료")
     }
 
@@ -134,6 +159,9 @@ actor BlockingCoordinator {
         if managesSafetyNet {
             removeSafetyNet()
         }
+
+        // 앱 디밍 해제 (v1.4)
+        await AppDimmingManager.shared.deactivate()
 
         state = .idle
         logger.info("차단 해제 완료")
@@ -288,6 +316,23 @@ actor BlockingCoordinator {
         try? FileManager.default.removeItem(atPath: Constants.Blocking.activeIndicatorPath)
         try? FileManager.default.removeItem(atPath: Constants.App.launchAgentPath)
         try? FileManager.default.removeItem(atPath: Constants.Blocking.hostsBackupPath)
+    }
+
+    /// 번들에서 top-sites.json 로드 (화이트리스트 모드)
+    private func loadTopSites() -> [String] {
+        let candidateURLs = [
+            Bundle.main.url(forResource: "top-sites", withExtension: "json"),
+            Bundle.main.url(forResource: "top-sites", withExtension: "json", subdirectory: "Presets"),
+            Bundle.main.url(forResource: "top-sites", withExtension: "json", subdirectory: "Resources/Presets"),
+        ]
+
+        guard let url = candidateURLs.compactMap({ $0 }).first,
+              let data = try? Data(contentsOf: url),
+              let sites = try? JSONDecoder().decode([String].self, from: data) else {
+            logger.warning("top-sites.json 로드 실패")
+            return []
+        }
+        return sites
     }
 
     /// 쉘 명령 인자용 단일 인용부호 이스케이프

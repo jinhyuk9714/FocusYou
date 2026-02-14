@@ -2,13 +2,14 @@ import SwiftUI
 import SwiftData
 import Charts
 
-// MARK: - 통계 뷰 (v0.5)
+// MARK: - 통계 뷰 (v0.5, v1.5 확장)
 
 struct StatsView: View {
     @Environment(ThemeManager.self) private var themeManager
     @Query(sort: \FocusSession.startedAt, order: .reverse)
     private var sessions: [FocusSession]
     @State private var viewModel = StatsViewModel()
+    @State private var showExportSheet = false
     @Namespace private var periodNamespace
 
     var body: some View {
@@ -19,9 +20,15 @@ struct StatsView: View {
             ScrollView {
                 VStack(spacing: Constants.Design.spacingXL) {
                     periodPicker
+                    growthSection
                     summaryCards
                     dailyChart
+                    monthlyTrendSection
                     modeRatioChart
+                    heatmapSection
+                    intentionSection
+                    BadgeGalleryView()
+                    QuoteView()
                     sessionHistory
                 }
                 .padding()
@@ -36,8 +43,19 @@ struct StatsView: View {
             Text("집중 통계")
                 .font(.title3.bold())
             Spacer()
+            Button {
+                showExportSheet = true
+            } label: {
+                Label("내보내기", systemImage: "square.and.arrow.up")
+                    .font(.callout)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(themeManager.primary)
         }
         .padding()
+        .sheet(isPresented: $showExportSheet) {
+            ExportView(sessions: sessions)
+        }
     }
 
     // MARK: - 기간 피커
@@ -65,6 +83,11 @@ struct StatsView: View {
 
     private var summaryCards: some View {
         let streak = viewModel.streakInfo(from: sessions)
+        let balanceScore = BurnoutDetector.shared.calculateBalanceScore(
+            sessions: sessions.map {
+                FocusSessionData(startedAt: $0.startedAt, actualDuration: $0.actualDuration, sessionType: $0.sessionType)
+            }
+        )
         return VStack(spacing: Constants.Design.spacingMD) {
             HStack(spacing: Constants.Design.spacingMD) {
                 summaryItem(
@@ -89,9 +112,17 @@ struct StatsView: View {
                 )
                 summaryItem(
                     icon: "flame.fill",
-                    color: .orange,
+                    color: themeManager.warning,
                     value: "\(streak.current)일",
                     label: "현재 스트릭"
+                )
+            }
+            HStack(spacing: Constants.Design.spacingMD) {
+                summaryItem(
+                    icon: "heart.fill",
+                    color: balanceScore >= 70 ? themeManager.success : balanceScore >= 40 ? themeManager.warning : themeManager.danger,
+                    value: "\(balanceScore)점",
+                    label: "균형 점수"
                 )
             }
         }
@@ -148,38 +179,42 @@ struct StatsView: View {
         .frostedCard()
     }
 
-    // MARK: - 모드 비율 차트
+    // MARK: - 월간 트렌드 (v1.5)
+
+    @ViewBuilder
+    private var monthlyTrendSection: some View {
+        let data = viewModel.monthlyTrendData(from: sessions)
+        if data.count >= 2 {
+            MonthlyTrendView(data: data)
+        }
+    }
+
+    // MARK: - 모드 비율 차트 (v1.5: 3-way)
 
     private var modeRatioChart: some View {
         VStack(alignment: .leading, spacing: Constants.Design.spacingMD) {
             Text("모드 비율")
                 .font(.headline)
 
-            let pomodoroPercent = viewModel.pomodoroRatio(from: sessions)
-            let freePercent = 100 - pomodoroPercent
+            let ratios = viewModel.modeRatios(from: sessions)
 
-            if viewModel.sessionCount(from: sessions) == 0 {
+            if ratios.isEmpty {
                 chartEmptyState
             } else {
                 HStack(spacing: Constants.Design.spacingXL) {
-                    Chart {
+                    Chart(ratios) { entry in
                         SectorMark(
-                            angle: .value("뽀모도로", pomodoroPercent),
+                            angle: .value(entry.mode, entry.count),
                             innerRadius: .ratio(0.55)
                         )
-                        .foregroundStyle(themeManager.primary)
-
-                        SectorMark(
-                            angle: .value("자유", freePercent),
-                            innerRadius: .ratio(0.55)
-                        )
-                        .foregroundStyle(themeManager.secondary)
+                        .foregroundStyle(modeColor(entry.mode))
                     }
                     .frame(width: 120, height: 120)
 
                     VStack(alignment: .leading, spacing: Constants.Design.spacingMD) {
-                        modeLabel(color: themeManager.primary, text: "뽀모도로", percent: pomodoroPercent)
-                        modeLabel(color: themeManager.secondary, text: "자유", percent: freePercent)
+                        ForEach(ratios) { entry in
+                            modeLabel(color: modeColor(entry.mode), text: entry.mode, percent: entry.percent)
+                        }
                     }
 
                     Spacer()
@@ -187,6 +222,14 @@ struct StatsView: View {
             }
         }
         .frostedCard()
+    }
+
+    private func modeColor(_ mode: String) -> Color {
+        switch mode {
+        case "뽀모도로": return themeManager.primary
+        case "플로우": return themeManager.accent
+        default: return themeManager.secondary
+        }
     }
 
     private func modeLabel(color: Color, text: String, percent: Int) -> some View {
@@ -198,6 +241,31 @@ struct StatsView: View {
             Text("\(percent)%")
                 .font(.callout.weight(.semibold))
                 .foregroundStyle(color)
+        }
+    }
+
+    // MARK: - 성장 (v1.5)
+
+    private var growthSection: some View {
+        GrowthView(totalHours: viewModel.totalFocusHours(from: sessions))
+    }
+
+    // MARK: - 히트맵 (v1.5)
+
+    @ViewBuilder
+    private var heatmapSection: some View {
+        if viewModel.selectedPeriod == .month || viewModel.selectedPeriod == .year {
+            HeatmapView(data: viewModel.heatmapData(from: sessions))
+        }
+    }
+
+    // MARK: - 의도별 분석 (v1.5)
+
+    @ViewBuilder
+    private var intentionSection: some View {
+        let entries = viewModel.intentionBreakdown(from: sessions)
+        if !entries.isEmpty {
+            IntentionAnalysisView(entries: entries)
         }
     }
 
@@ -284,6 +352,7 @@ struct StatsView: View {
         .modelContainer(for: [
             BlockedSite.self, BlockedApp.self,
             BlockProfile.self, FocusSession.self,
+            Badge.self,
         ], inMemory: true)
         .frame(width: 600, height: 700)
 }

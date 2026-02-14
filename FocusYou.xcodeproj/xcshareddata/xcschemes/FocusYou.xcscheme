@@ -20,6 +20,20 @@
                ReferencedContainer = "container:FocusYou.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "3B11DCF9BCA8995179D4844C"
+               BuildableName = "FocusYouWidget.appex"
+               BlueprintName = "FocusYouWidget"
+               ReferencedContainer = "container:FocusYou.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction

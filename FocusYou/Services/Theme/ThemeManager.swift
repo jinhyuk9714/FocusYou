@@ -67,6 +67,12 @@ final class ThemeManager {
     var textPrimary: Color { .primary }
     var textSecondary: Color { .secondary }
 
+    // MARK: - 시맨틱 상태 색상
+
+    var warning: Color { .orange }
+    var success: Color { .green }
+    var danger: Color { .red }
+
     // MARK: - 파생 스타일
 
     /// 프라이머리 그라디언트
@@ -103,6 +109,15 @@ final class ThemeManager {
 
         defaults.set(selectedThemeID, forKey: Constants.Settings.selectedThemeIDKey)
         logger.debug("ThemeManager 초기화: \(self.selectedThemeID)")
+    }
+
+    /// 카테고리별 테마 그룹
+    var themesByCategory: [(category: String, themes: [AppTheme])] {
+        let grouped = Dictionary(grouping: availableThemes) { $0.category ?? "기타" }
+        return Constants.ThemeCategory.all.compactMap { cat in
+            guard let themes = grouped[cat], !themes.isEmpty else { return nil }
+            return (category: cat, themes: themes)
+        }
     }
 
     func selectTheme(id: String) {

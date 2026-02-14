@@ -20,7 +20,9 @@ struct FocusYouApp: App {
                 for: BlockProfile.self,
                 BlockedSite.self,
                 BlockedApp.self,
-                FocusSession.self
+                FocusSession.self,
+                BlockSchedule.self,
+                Badge.self
             )
             modelContainer = container
         } catch {
@@ -56,6 +58,22 @@ struct FocusYouApp: App {
                     ProfileBootstrapper.ensureDefaultProfileAndMigrateOrphans(
                         modelContext: modelContainer.mainContext
                     )
+
+                    // 스케줄 모니터링 시작 (v1.3)
+                    if settingsViewModel.enableSchedule {
+                        ScheduleManager.shared.startMonitoring(
+                            modelContext: modelContainer.mainContext,
+                            appState: appState
+                        )
+                    }
+
+                    // Focus Mode 감시 시작 (v1.4)
+                    if settingsViewModel.enableFocusMode {
+                        FocusModeObserver.shared.startObserving(
+                            appState: appState,
+                            modelContext: modelContainer.mainContext
+                        )
+                    }
                 }
         } label: {
             HStack(spacing: 4) {
@@ -114,6 +132,7 @@ struct FocusYouApp: App {
         // MARK: - 설정 윈도우
         Window("설정", id: "settings") {
             SettingsView()
+                .modelContainer(modelContainer)
                 .environment(settingsViewModel)
                 .environment(themeManager)
         }

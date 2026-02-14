@@ -6,21 +6,53 @@
 
 ## 주요 기능
 
-- **자유 타이머** — 1~180분, 프리셋(25/50/90분) 또는 슬라이더로 설정
+**타이머**
+- **자유 타이머** — 1~180분, 프리셋 또는 슬라이더로 설정
+- **뽀모도로** — 집중/휴식 사이클, Overflow 모드, 파이차트 UI
+- **Flowmodoro** — 자유 집중 → 1/5 비례 자동 휴식
+
+**차단**
 - **웹사이트 차단** — hosts 파일 기반, IPv4+IPv6 동시 차단
 - **앱 차단** — 설치된 앱 목록에서 선택, 실행 시 자동 종료
 - **카테고리 프리셋** — SNS, 뉴스, 동영상, 게임 한 번에 추가/제거
-- **비밀번호 최초 1회** — 영구 헬퍼 스크립트로 이후 비밀번호 불필요
 - **안전장치 3중** — 앱 종료/크래시/재부팅 시 차단 자동 해제
-- **메뉴바 전용** — Dock에 표시되지 않는 가벼운 앱
 
-## 요구 사항
+**생산성**
+- **의도 입력** — 세션 시작 전 집중 목표 기록
+- **3단계 회고** — 이모지 / 별점 / 방해요소 태그
+- **스트릭** — 일일 완료 추적, 연속 기록
+- **성장 시스템** — 🌱→🏞️ 5단계 누적 집중 시간 성장
+- **마일스톤 배지** — 10개 달성 배지 + 명언
 
+**분석**
+- **통계 대시보드** — 일별/주별/월별/연간 집중 시간 차트
+- **히트맵** — GitHub 스타일 집중 강도 시각화
+- **데이터 내보내기** — CSV/JSON
+
+**연동**
+- **70+ 테마** — 12개 카테고리
+- **Shortcuts/Siri** — 음성으로 세션 제어
+- **데스크톱 위젯** — 집중 상태/스트릭 표시
+- **macOS Focus Mode** — 시스템 집중 모드 연동
+- **Apple Calendar** — 세션 자동 기록
+- **스케줄** — 요일별 자동 세션
+- **앰비언트 사운드** — 빗소리, 카페, 자연, 화이트 노이즈
+- **번아웃 방지** — 일일 한계, 균형 점수, 스트레칭 알림
+
+## 설치
+
+### DMG 다운로드 (권장)
+
+1. [Releases](https://github.com/sungjh/FocusYou/releases)에서 최신 `FocusYou-x.x.x.dmg` 다운로드
+2. DMG를 열고 `Focus You.app`을 `Applications` 폴더로 드래그
+3. 최초 실행 시 **Control + 클릭 → 열기** (미서명 앱 허용)
+
+### 소스에서 빌드
+
+요구 사항:
 - macOS 14.0 (Sonoma) 이상
 - Xcode 15+
 - [xcodegen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`)
-
-## 빌드
 
 ```bash
 # Xcode CLI 설정 (최초 1회)
@@ -32,6 +64,13 @@ xcodebuild -scheme FocusYou -configuration Debug build
 ```
 
 또는 Xcode에서 `FocusYou.xcodeproj`를 열고 Run (Cmd+R).
+
+### 릴리즈 빌드 (DMG 생성)
+
+```bash
+./scripts/release.sh --skip-sign --skip-notarize
+# 결과: build/FocusYou-{version}.dmg
+```
 
 ## CI
 
@@ -72,13 +111,15 @@ defaults delete com.sungjh.focusyou debugSecondsPerMinute
 
 | 버전 | 기능 | 상태 |
 |------|------|------|
-| **v0.1** | 메뉴바 + 자유 타이머 + 차단 | ✅ 완료 |
-| **v0.3** | 뽀모도로 + 파이차트 타이머 | ✅ 개발 완료 |
-| v0.5 | 테마 10종 + 프로필 + 통계 | 예정 |
-| v1.0 | Flowmodoro + 스트릭 + 온보딩 | 예정 |
-| v2.0 | Pro 구독 + Network Extension | 예정 |
+| **v0.1** | 메뉴바 + 자유 타이머 + 차단 | ✅ |
+| **v0.3** | 뽀모도로 + 파이차트 타이머 | ✅ |
+| **v0.5** | 테마 70+ + 프로필 + 통계 | ✅ |
+| **v1.0** | Flowmodoro + 스트릭 + 온보딩 | ✅ |
+| **v1.4** | Shortcuts + Widget + Focus Mode + 앱 디밍 | ✅ |
+| **v1.5** | 성장 시스템 + 번아웃 방지 + 내보내기 | ✅ |
+| v2.0 | Pro 구독 + Network Extension + App Store | 예정 |
 
-v0.3 변경 내역은 `CHANGELOG.md`와 `docs/release-v0.3.0.md`를 참고하세요.
+변경 내역은 `CHANGELOG.md`를 참고하세요.
 
 ## 프로젝트 구조
 

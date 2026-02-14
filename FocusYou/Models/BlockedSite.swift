@@ -14,6 +14,9 @@ final class BlockedSite {
     /// 차단 활성 여부 (개별 토글)
     var isEnabled: Bool
 
+    /// 키워드 패턴 여부 (v1.3: true이면 domain 필드는 URL 키워드)
+    var isKeywordPattern: Bool?
+
     /// 생성 일시
     var createdAt: Date
 
@@ -21,10 +24,11 @@ final class BlockedSite {
     /// SwiftData 마이그레이션 호환을 위해 Optional 유지.
     var profile: BlockProfile?
 
-    init(domain: String, category: String? = nil) {
-        self.domain = domain.normalizedDomain
+    init(domain: String, category: String? = nil, isKeywordPattern: Bool = false) {
+        self.domain = isKeywordPattern ? domain : domain.normalizedDomain
         self.category = category
         self.isEnabled = true
+        self.isKeywordPattern = isKeywordPattern
         self.createdAt = .now
     }
 }

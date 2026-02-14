@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 // MARK: - 앱 전체에서 사용되는 상수 정의
 
@@ -147,6 +148,143 @@ enum Constants {
         // 온보딩 (v1.0)
         static let hasCompletedOnboardingKey = "hasCompletedOnboarding"
         static let hasCompletedOnboardingDefault = false
+
+        // 의도 입력 & 회고 (v1.1)
+        static let showIntentionInputKey = "showIntentionInput"
+        static let showIntentionInputDefault = false
+        static let showRetrospectKey = "showRetrospect"
+        static let showRetrospectDefault = false
+
+        // 회고 레벨 (v1.5)
+        static let retrospectLevelKey = "retrospectLevel"
+        static let retrospectLevelDefault = 1
+
+        // 앰비언트 사운드 (v1.2)
+        static let enableAmbientSoundKey = "enableAmbientSound"
+        static let enableAmbientSoundDefault = false
+        static let ambientSoundTrackKey = "ambientSoundTrack"
+        static let ambientSoundTrackDefault = "whiteNoise"
+        static let ambientSoundVolumeKey = "ambientSoundVolume"
+        static let ambientSoundVolumeDefault = 0.5
+
+        // 로그인 시 자동 시작 (v1.2)
+        static let launchAtLoginKey = "launchAtLogin"
+        static let launchAtLoginDefault = false
+
+        // 캘린더 동기화 (v1.3)
+        static let enableCalendarSyncKey = "enableCalendarSync"
+        static let enableCalendarSyncDefault = false
+
+        // 스케줄 (v1.3)
+        static let enableScheduleKey = "enableSchedule"
+        static let enableScheduleDefault = false
+
+        // Focus Mode 연동 (v1.4)
+        static let enableFocusModeKey = "enableFocusMode"
+        static let enableFocusModeDefault = false
+
+        // 앱 디밍 (v1.4)
+        static let enableAppDimmingKey = "enableAppDimming"
+        static let enableAppDimmingDefault = false
+        static let dimmingOpacityKey = "dimmingOpacity"
+        static let dimmingOpacityDefault = 0.3
+
+        // 번아웃 방지 (v1.5)
+        static let enableBurnoutWarningsKey = "enableBurnoutWarnings"
+        static let enableBurnoutWarningsDefault = false
+        static let burnoutDailyLimitHoursKey = "burnoutDailyLimitHours"
+    }
+
+    // MARK: - 사운드
+
+    enum Sound {
+        static let fadeInDuration: TimeInterval = 0.5
+        static let fadeOutDuration: TimeInterval = 0.5
+        static let sampleRate: Double = 44100
+        static let volumeRange: ClosedRange<Double> = 0.0...1.0
+    }
+
+    // MARK: - 취소 강도 (v1.3)
+
+    enum CancelIntensity {
+        /// 잠금 시간 범위 (분)
+        static let lockoutMinutesRange: ClosedRange<Int> = 1...30
+        /// 기본 잠금 시간 (분)
+        static let lockoutMinutesDefault = 5
+        /// 비상 해제 대기 시간 (초)
+        static let emergencyUnlockDuration: TimeInterval = 120
+        /// 1일 최대 비상 해제 횟수
+        static let maxEmergencyUnlocksPerDay = 1
+    }
+
+    // MARK: - 스케줄 (v1.3)
+
+    enum Schedule {
+        /// 스케줄 체크 간격 (초)
+        static let checkIntervalSeconds: TimeInterval = 60
+        /// 요일 한글 심볼 (1=일, 2=월, ..., 7=토)
+        static let weekdaySymbols = ["일", "월", "화", "수", "목", "금", "토"]
+    }
+
+    // MARK: - 테마 카테고리 (v1.3)
+
+    enum ThemeCategory {
+        static let all = ["미니멀", "따뜻한", "차가운", "자연", "네온", "파스텔"]
+        static let icons: [String: String] = [
+            "미니멀": "square.3.layers.3d.down.left",
+            "따뜻한": "sun.max.fill",
+            "차가운": "snowflake",
+            "자연": "leaf.fill",
+            "네온": "sparkles",
+            "파스텔": "paintpalette.fill",
+        ]
+    }
+
+    // MARK: - 회고 (v1.5)
+
+    enum Retrospect {
+        /// 방해요소 태그 목록
+        static let disruptionTags = ["SNS", "이메일", "전화", "소음", "피곤"]
+        /// 레벨 이름
+        static let levelNames = ["간단 (이모지)", "보통 (이모지+메모)", "상세 (별점+방해요소)"]
+    }
+
+    // MARK: - 번아웃 방지 (v1.5)
+
+    enum Burnout {
+        /// 일일 집중 한계 기본값 (시간)
+        static let dailyLimitHoursDefault = 6.0
+        /// 일일 집중 한계 범위 (시간)
+        static let dailyLimitHoursRange: ClosedRange<Double> = 2...12
+        /// 스트레칭 알림 임계값 (초) — 90분
+        static let stretchReminderThresholdSeconds: TimeInterval = 5400
+        /// 배너 해제 타임스탬프 키
+        static let bannerDismissedAtKey = "burnoutBannerDismissedAt"
+        /// 번아웃 접근 경고 임계값 (초) — 30분
+        static let approachingThresholdSeconds: TimeInterval = 1800
+        /// 배너 해제 후 재표시 쿨다운 (초) — 24시간
+        static let bannerCooldownSeconds: TimeInterval = 86400
+    }
+
+    // MARK: - 캘린더 (v1.4)
+
+    enum CalendarSync {
+        /// 캘린더 이벤트 색상 (빨간색 계열)
+        static let calendarColor = CGColor(red: 0.9, green: 0.22, blue: 0.27, alpha: 1)
+    }
+
+    // MARK: - App Groups (v1.4)
+
+    enum AppGroups {
+        static let identifier = "group.com.sungjh.focusyou"
+    }
+
+    // MARK: - 위젯 (v1.4)
+
+    enum Widget {
+        static let focusStatusKind = "FocusStatusWidget"
+        static let streakKind = "StreakWidget"
+        static let refreshInterval: TimeInterval = 300
     }
 
     // MARK: - 디자인 토큰
