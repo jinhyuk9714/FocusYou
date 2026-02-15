@@ -234,7 +234,7 @@ struct MainDashboardView: View {
                     activeColor: themeManager.primary
                 )
             }
-            .padding(3)
+            .padding(Constants.Design.spacingXS)
             .background(Color.secondary.opacity(0.06), in: Capsule())
 
             switch quickStartMode {
@@ -346,6 +346,7 @@ struct MainDashboardView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("\(profile.name) 프로필 선택")
             }
         }
     }
@@ -1010,6 +1011,7 @@ struct MainDashboardView: View {
         .environment(AppState())
         .environment(SettingsViewModel())
         .environment(ThemeManager.shared)
+        .environment(LicenseManager.shared)
         .modelContainer(for: [
             BlockedSite.self, BlockedApp.self,
             BlockProfile.self, FocusSession.self,

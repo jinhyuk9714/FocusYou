@@ -5,13 +5,17 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(SettingsViewModel.self) private var viewModel
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(LicenseManager.self) private var licenseManager
 
     @State private var isPreviewPlaying = false
+    @State private var showPaywall = false
+    @State private var paywallReason: PaywallReason = .proFeature(.ambientSound)
 
     var body: some View {
         TabView {
             // 탭 1: 일반
             Form {
+                subscriptionSection
                 generalSection
                 themeSection
                 infoSection
@@ -47,6 +51,44 @@ struct SettingsView: View {
             }
             .formStyle(.grouped)
             .tabItem { Label("고급", systemImage: "wrench.and.screwdriver") }
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView(reason: paywallReason)
+                .environment(themeManager)
+        }
+    }
+
+    // MARK: - 구독 (v2.0)
+
+    private var subscriptionSection: some View {
+        Section("구독") {
+            HStack {
+                VStack(alignment: .leading, spacing: Constants.Design.spacingXS) {
+                    HStack(spacing: Constants.Design.spacingSM) {
+                        Text(licenseManager.isPro ? "Pro" : "무료")
+                            .font(.callout.bold())
+                        if licenseManager.isPro {
+                            Image(systemName: "crown.fill")
+                                .foregroundStyle(themeManager.primary)
+                        }
+                    }
+                    Text(licenseManager.isPro
+                         ? "모든 기능을 사용 중입니다."
+                         : "일부 기능이 제한됩니다.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                if !licenseManager.isPro {
+                    Button {
+                        paywallReason = .proFeature(.unlimitedBlocks)
+                        showPaywall = true
+                    } label: {
+                        Label("업그레이드", systemImage: "crown.fill")
+                    }
+                    .secondaryActionStyle(color: themeManager.primary)
+                }
+            }
         }
     }
 
@@ -91,10 +133,25 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
 
             if viewModel.showRetrospect {
-                Picker("회고 레벨", selection: Bindable(viewModel).retrospectLevel) {
+                Picker("회고 레벨", selection: Binding(
+                    get: { viewModel.retrospectLevel },
+                    set: { newLevel in
+                        if licenseManager.canUseRetrospectLevel(newLevel) {
+                            viewModel.retrospectLevel = newLevel
+                        } else {
+                            paywallReason = .retrospectLimit
+                            showPaywall = true
+                        }
+                    }
+                )) {
                     ForEach(1...3, id: \.self) { level in
-                        Text(Constants.Retrospect.levelNames[level - 1])
-                            .tag(level)
+                        HStack {
+                            Text(Constants.Retrospect.levelNames[level - 1])
+                            if level > Constants.Subscription.freeRetrospectMaxLevel && !licenseManager.isPro {
+                                ProBadge()
+                            }
+                        }
+                        .tag(level)
                     }
                 }
             }
@@ -120,9 +177,10 @@ struct SettingsView: View {
 
     private var ambientSoundSection: some View {
         Section("주변음") {
-            Toggle(
+            proGatedToggle(
                 "집중 시 배경 소리",
-                isOn: Bindable(viewModel).enableAmbientSound
+                isOn: Bindable(viewModel).enableAmbientSound,
+                feature: .ambientSound
             )
 
             Text("세션 중 배경 노이즈를 재생합니다. 뽀모도로 휴식에는 자동 정지됩니다.")
@@ -145,6 +203,7 @@ struct SettingsView: View {
                         value: Bindable(viewModel).ambientSoundVolume,
                         in: Constants.Sound.volumeRange
                     )
+                    .accessibilityLabel("앰비언트 볼륨")
                     Image(systemName: "speaker.wave.3.fill")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -212,10 +271,16 @@ struct SettingsView: View {
 
     private func themeRow(_ theme: AppTheme) -> some View {
         let isSelected = theme.id == themeManager.selectedThemeID
+        let isLocked = !licenseManager.isPro && !themeManager.isThemeFree(theme)
 
         return Button {
-            withAnimation(.quickEase) {
-                themeManager.selectTheme(id: theme.id)
+            if isLocked {
+                paywallReason = .themeLimit
+                showPaywall = true
+            } else {
+                withAnimation(.quickEase) {
+                    themeManager.selectTheme(id: theme.id)
+                }
             }
         } label: {
             HStack(spacing: Constants.Design.spacingMD) {
@@ -223,9 +288,14 @@ struct SettingsView: View {
                 themeSwatches(theme, isSelected: isSelected)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(theme.name)
-                        .font(.callout.weight(isSelected ? .semibold : .regular))
-                        .foregroundStyle(.primary)
+                    HStack(spacing: Constants.Design.spacingXS) {
+                        Text(theme.name)
+                            .font(.callout.weight(isSelected ? .semibold : .regular))
+                            .foregroundStyle(isLocked ? .secondary : .primary)
+                        if isLocked {
+                            ProBadge()
+                        }
+                    }
 
                     // 미니 프리뷰 칩
                     miniTimerPreview(theme)
@@ -286,9 +356,10 @@ struct SettingsView: View {
 
     private var scheduleSection: some View {
         Section("스케줄") {
-            Toggle(
+            proGatedToggle(
                 "자동 스케줄",
-                isOn: Bindable(viewModel).enableSchedule
+                isOn: Bindable(viewModel).enableSchedule,
+                feature: .schedule
             )
 
             Text("요일별로 자동 집중 세션을 시작합니다.")
@@ -306,9 +377,10 @@ struct SettingsView: View {
 
     private var focusModeSection: some View {
         Section("macOS Focus Mode") {
-            Toggle(
+            proGatedToggle(
                 "Focus Mode 연동",
-                isOn: Bindable(viewModel).enableFocusMode
+                isOn: Bindable(viewModel).enableFocusMode,
+                feature: .focusModeIntegration
             )
 
             Text("macOS 집중 모드 활성화 시 자동으로 집중 세션을 시작합니다.")
@@ -321,9 +393,10 @@ struct SettingsView: View {
 
     private var appDimmingSection: some View {
         Section("앱 디밍") {
-            Toggle(
+            proGatedToggle(
                 "비활성 앱 디밍",
-                isOn: Bindable(viewModel).enableAppDimming
+                isOn: Bindable(viewModel).enableAppDimming,
+                feature: .appDimming
             )
 
             Text("차단 앱 윈도우를 어둡게 표시하여 사용을 자제합니다.")
@@ -389,9 +462,10 @@ struct SettingsView: View {
 
     private var calendarSection: some View {
         Section("Apple Calendar") {
-            Toggle(
+            proGatedToggle(
                 "완료 세션 캘린더에 기록",
-                isOn: Bindable(viewModel).enableCalendarSync
+                isOn: Bindable(viewModel).enableCalendarSync,
+                feature: .calendarSync
             )
 
             Text("완료된 집중 세션이 Focus You 캘린더에 자동 기록됩니다.")
@@ -441,11 +515,37 @@ struct SettingsView: View {
         }
     }
     #endif
+
+    // MARK: - Pro 게이팅 헬퍼
+
+    private func proGatedToggle(
+        _ title: String,
+        isOn: Binding<Bool>,
+        feature: LicenseManager.ProFeature
+    ) -> some View {
+        HStack {
+            Toggle(title, isOn: Binding(
+                get: { isOn.wrappedValue },
+                set: { newValue in
+                    if newValue && licenseManager.requiresPro(feature: feature) {
+                        paywallReason = .proFeature(feature)
+                        showPaywall = true
+                    } else {
+                        isOn.wrappedValue = newValue
+                    }
+                }
+            ))
+            if !licenseManager.isPro {
+                ProBadge()
+            }
+        }
+    }
 }
 
 #Preview {
     SettingsView()
         .environment(SettingsViewModel())
         .environment(ThemeManager.shared)
+        .environment(LicenseManager.shared)
         .frame(width: 400)
 }

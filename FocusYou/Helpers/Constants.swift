@@ -327,6 +327,30 @@ enum Constants {
         ]
     }
 
+    // MARK: - 구독 (v2.0)
+
+    enum Subscription {
+        // 무료 한도
+        static let freeWebsiteLimit = 10
+        static let freeAppLimit = 5
+        static let freeTimerMaxMinutes = 120
+        static let freeProfileLimit = 1
+        static let freeThemeLimit = 10
+        static let freeRetrospectMaxLevel = 1
+
+        // 무료 통계 기간
+        static let freeStatsPeriods: Set<String> = ["오늘", "이번 주"]
+
+        // UserDefaults key
+        static let isProKey = "subscription_isPro"
+
+        // 가격 표시 문자열
+        static let monthlyPrice = "$2.99"
+        static let annualPrice = "$14.99"
+        static let annualDiscountPrice = "$9.99"
+        static let lifetimePrice = "$49.99"
+    }
+
     // MARK: - 카테고리
 
     enum Category {

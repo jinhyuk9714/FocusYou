@@ -59,6 +59,9 @@ final class AppState {
     var showError = false
     var canRetryBlockingDeactivation = false
 
+    /// Pro 구독 여부 (v2.0)
+    var isPro: Bool { LicenseManager.shared.isPro }
+
     /// Private Relay 경고 표시 여부
     var showPrivateRelayWarning = false
     private var privateRelayWarningDismissedThisSession = false

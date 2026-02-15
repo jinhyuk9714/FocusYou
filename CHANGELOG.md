@@ -2,6 +2,36 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.0.1] - 2026-02-15
+
+### Changed
+- 하드코딩 색상 2곳을 ThemeManager 시맨틱 색상으로 전환 (ExportView, HealthCheckView).
+- 매직넘버 패딩 4곳을 Constants.Design.spacingXS로 통일.
+- 접근성 레이블 8곳 추가 (ProfileListView, MainDashboardView, MenuBarView, AppBlockView, TimerView, SettingsView, WebsiteBlockView).
+- 무료 한도 카운터에 경고색 적용 (WebsiteBlockView, AppBlockView).
+- StatsView 잠금 섹션을 블러 오버레이에서 플레이스홀더 카드로 변경.
+- PaywallView 버튼 문구 개선 ("곧 출시 예정" → "App Store 출시 시 이용 가능").
+- MenuBarView blockingBadge 애니메이션을 `.symbolEffect(.pulse)`로 통일.
+- MenuBarView, CompletedContentView @Query에 `wasCompleted` 필터 추가.
+
+## [2.0.0] - 2026-02-15
+
+### Added
+- Freemium 기능 게이팅 인프라 구축 (Pro 구독 대비).
+- LicenseManager 서비스: isPro 플래그 + 무료 한도 체크 (사이트 10개, 앱 5개, 프로필 1개, 타이머 2시간, 테마 10개, 통계 기간 제한, 회고 Level 1).
+- PaywallView: 기능별 맥락 메시지를 보여주는 업그레이드 안내 시트.
+- ProBadge / ProLockedOverlay 컴포넌트.
+- 17개 Pro 전용 기능 열거 (ProFeature enum).
+- 기능 게이팅 통합: WebsiteBlockView, AppBlockView, ProfileListView, StatsView, SettingsView, TimerView, ThemeManager.
+- LicenseManagerTests: 한도 체크 경계값 + Pro 무시 + 기능 열거 전수 테스트.
+
+### Changed
+- 모든 Scene 윈도우에 LicenseManager environment 주입.
+- 설정 일반 탭에 구독 상태 섹션 추가.
+- 무료 사용자에게 타이머 슬라이더 최대값 120분 제한.
+- 통계 월간/연간 기간 및 히트맵/트렌드 섹션에 블러 오버레이.
+- 테마 선택 시 무료 10개 이후 잠금 + ProBadge.
+
 ## [1.5.1] - 2026-02-15
 
 ### Changed

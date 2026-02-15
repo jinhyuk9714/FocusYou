@@ -117,7 +117,7 @@ struct BlockListView: View {
                 )
             }
         }
-        .padding(4)
+        .padding(Constants.Design.spacingXS)
         .background(Color.secondary.opacity(0.06), in: Capsule())
         .padding(.horizontal)
         .padding(.vertical, Constants.Design.spacingMD)
@@ -127,6 +127,7 @@ struct BlockListView: View {
 #Preview {
     BlockListView()
         .environment(ThemeManager.shared)
+        .environment(LicenseManager.shared)
         .modelContainer(for: [
             BlockedSite.self, BlockedApp.self,
             BlockProfile.self, FocusSession.self,

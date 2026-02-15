@@ -6,10 +6,13 @@ import Charts
 
 struct StatsView: View {
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(LicenseManager.self) private var licenseManager
     @Query(sort: \FocusSession.startedAt, order: .reverse)
     private var sessions: [FocusSession]
     @State private var viewModel = StatsViewModel()
     @State private var showExportSheet = false
+    @State private var showPaywall = false
+    @State private var paywallReason: PaywallReason = .statsLimit
     @Namespace private var periodNamespace
 
     var body: some View {
@@ -43,18 +46,32 @@ struct StatsView: View {
             Text("집중 통계")
                 .font(.title3.bold())
             Spacer()
-            Button {
-                showExportSheet = true
-            } label: {
-                Label("내보내기", systemImage: "square.and.arrow.up")
-                    .font(.callout)
+            HStack(spacing: Constants.Design.spacingXS) {
+                if !licenseManager.isPro {
+                    ProBadge()
+                }
+                Button {
+                    if licenseManager.requiresPro(feature: .dataExport) {
+                        paywallReason = .proFeature(.dataExport)
+                        showPaywall = true
+                    } else {
+                        showExportSheet = true
+                    }
+                } label: {
+                    Label("내보내기", systemImage: "square.and.arrow.up")
+                        .font(.callout)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(themeManager.primary)
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(themeManager.primary)
         }
         .padding()
         .sheet(isPresented: $showExportSheet) {
             ExportView(sessions: sessions)
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView(reason: paywallReason)
+                .environment(themeManager)
         }
     }
 
@@ -68,14 +85,21 @@ struct StatsView: View {
                     tag: period,
                     selection: Binding(
                         get: { viewModel.selectedPeriod },
-                        set: { viewModel.selectedPeriod = $0 }
+                        set: { newPeriod in
+                            if licenseManager.canUseStatsPeriod(newPeriod.rawValue) {
+                                viewModel.selectedPeriod = newPeriod
+                            } else {
+                                paywallReason = .statsLimit
+                                showPaywall = true
+                            }
+                        }
                     ),
                     namespace: periodNamespace,
                     activeColor: themeManager.primary
                 )
             }
         }
-        .padding(3)
+        .padding(Constants.Design.spacingXS)
         .background(Color.secondary.opacity(0.06), in: Capsule())
     }
 
@@ -185,7 +209,18 @@ struct StatsView: View {
     private var monthlyTrendSection: some View {
         let data = viewModel.monthlyTrendData(from: sessions)
         if data.count >= 2 {
-            MonthlyTrendView(data: data)
+            if licenseManager.isPro {
+                MonthlyTrendView(data: data)
+            } else {
+                RoundedRectangle(cornerRadius: Constants.Design.cornerMD)
+                    .fill(Color.secondary.opacity(0.04))
+                    .frame(height: 180)
+                    .overlay { ProLockedOverlay(message: "월간 트렌드는 Pro에서 확인") }
+                    .onTapGesture {
+                        paywallReason = .proFeature(.advancedStats)
+                        showPaywall = true
+                    }
+            }
         }
     }
 
@@ -255,7 +290,18 @@ struct StatsView: View {
     @ViewBuilder
     private var heatmapSection: some View {
         if viewModel.selectedPeriod == .month || viewModel.selectedPeriod == .year {
-            HeatmapView(data: viewModel.heatmapData(from: sessions))
+            if licenseManager.isPro {
+                HeatmapView(data: viewModel.heatmapData(from: sessions))
+            } else {
+                RoundedRectangle(cornerRadius: Constants.Design.cornerMD)
+                    .fill(Color.secondary.opacity(0.04))
+                    .frame(height: 180)
+                    .overlay { ProLockedOverlay(message: "히트맵은 Pro에서 확인") }
+                    .onTapGesture {
+                        paywallReason = .proFeature(.advancedStats)
+                        showPaywall = true
+                    }
+            }
         }
     }
 
@@ -349,6 +395,7 @@ struct StatsView: View {
 #Preview {
     StatsView()
         .environment(ThemeManager.shared)
+        .environment(LicenseManager.shared)
         .modelContainer(for: [
             BlockedSite.self, BlockedApp.self,
             BlockProfile.self, FocusSession.self,

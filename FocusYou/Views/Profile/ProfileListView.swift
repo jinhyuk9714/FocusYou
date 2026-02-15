@@ -6,9 +6,11 @@ import SwiftData
 struct ProfileListView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(LicenseManager.self) private var licenseManager
     @Query(sort: \BlockProfile.createdAt, order: .reverse)
     private var profiles: [BlockProfile]
     @State private var viewModel = ProfileViewModel()
+    @State private var showPaywall = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -17,15 +19,25 @@ struct ProfileListView: View {
                 Text("차단 프로필")
                     .font(.title3.bold())
                 Spacer()
-                Button {
-                    viewModel.prepareNewProfile()
-                } label: {
-                    Label("새 프로필", systemImage: "plus.circle.fill")
-                        .font(.callout.weight(.semibold))
-                        .contentShape(Rectangle())
+                HStack(spacing: Constants.Design.spacingXS) {
+                    if !licenseManager.isPro {
+                        ProBadge()
+                    }
+                    Button {
+                        if licenseManager.canAddProfile(currentCount: profiles.count) {
+                            viewModel.prepareNewProfile()
+                        } else {
+                            showPaywall = true
+                        }
+                    } label: {
+                        Label("새 프로필", systemImage: "plus.circle.fill")
+                            .font(.callout.weight(.semibold))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(themeManager.primary)
+                    .accessibilityLabel("새 프로필 추가")
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(themeManager.primary)
             }
             .padding()
 
@@ -47,6 +59,10 @@ struct ProfileListView: View {
         }
         .sheet(isPresented: $viewModel.showEditor) {
             ProfileEditorView(viewModel: viewModel)
+                .environment(themeManager)
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView(reason: .profileLimit)
                 .environment(themeManager)
         }
     }
@@ -161,6 +177,7 @@ struct ProfileListView: View {
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("\(profile.name) 메뉴")
         }
         .frame(height: 64)
         .frostedCard(cornerRadius: Constants.Design.cornerMD, padding: Constants.Design.spacingMD)
@@ -170,6 +187,7 @@ struct ProfileListView: View {
 #Preview {
     ProfileListView()
         .environment(ThemeManager.shared)
+        .environment(LicenseManager.shared)
         .modelContainer(for: [
             BlockedSite.self, BlockedApp.self,
             BlockProfile.self, FocusSession.self,

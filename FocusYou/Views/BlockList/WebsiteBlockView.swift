@@ -6,10 +6,13 @@ import SwiftData
 struct WebsiteBlockView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(LicenseManager.self) private var licenseManager
     @Query(sort: \BlockedSite.createdAt, order: .reverse)
     private var sites: [BlockedSite]
     @State private var viewModel = BlockListViewModel()
     @State private var hoveredSiteID: PersistentIdentifier?
+    @State private var showPaywall = false
+    @State private var paywallReason: PaywallReason = .websiteLimit
     let selectedProfile: BlockProfile?
 
     private var scopedSites: [BlockedSite] {
@@ -22,6 +25,20 @@ struct WebsiteBlockView: View {
         VStack(spacing: Constants.Design.spacingMD) {
             inputField
 
+            // 무료 한도 카운터 (v2.0)
+            if !licenseManager.isPro {
+                HStack {
+                    Spacer()
+                    Text("\(scopedSites.count)/\(Constants.Subscription.freeWebsiteLimit)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(
+                            scopedSites.count >= Constants.Subscription.freeWebsiteLimit
+                                ? themeManager.warning : .secondary
+                        )
+                    ProBadge()
+                }
+            }
+
             if let error = viewModel.errorMessage {
                 Text(error)
                     .font(.caption)
@@ -30,6 +47,10 @@ struct WebsiteBlockView: View {
             }
 
             siteList
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView(reason: paywallReason)
+                .environment(themeManager)
         }
     }
 
@@ -52,10 +73,14 @@ struct WebsiteBlockView: View {
                         viewModel.isKeywordMode ? "차단할 키워드 입력" : "차단할 웹사이트 주소 입력"
                     )
                     .onSubmit {
-                        viewModel.addWebsite(
-                            modelContext: modelContext,
-                            profile: selectedProfile
-                        )
+                        if licenseManager.canAddWebsite(currentCount: scopedSites.count) {
+                            viewModel.addWebsite(
+                                modelContext: modelContext,
+                                profile: selectedProfile
+                            )
+                        } else {
+                            showPaywall = true
+                        }
                     }
                 }
                 .padding(.horizontal, Constants.Design.spacingMD)
@@ -67,10 +92,14 @@ struct WebsiteBlockView: View {
                 )
 
                 Button {
-                    viewModel.addWebsite(
-                        modelContext: modelContext,
-                        profile: selectedProfile
-                    )
+                    if licenseManager.canAddWebsite(currentCount: scopedSites.count) {
+                        viewModel.addWebsite(
+                            modelContext: modelContext,
+                            profile: selectedProfile
+                        )
+                    } else {
+                        showPaywall = true
+                    }
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 24))
@@ -82,16 +111,32 @@ struct WebsiteBlockView: View {
             }
 
             // 키워드 모드 토글
-            Toggle(isOn: $viewModel.isKeywordMode) {
-                HStack(spacing: 4) {
-                    Image(systemName: "textformat.abc")
-                        .font(.caption2)
-                    Text("키워드로 차단")
-                        .font(.caption)
+            HStack {
+                Toggle(isOn: Binding(
+                    get: { viewModel.isKeywordMode },
+                    set: { newValue in
+                        if newValue && licenseManager.requiresPro(feature: .keywordBlocking) {
+                            paywallReason = .proFeature(.keywordBlocking)
+                            showPaywall = true
+                        } else {
+                            viewModel.isKeywordMode = newValue
+                        }
+                    }
+                )) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "textformat.abc")
+                            .font(.caption2)
+                        Text("키워드로 차단")
+                            .font(.caption)
+                    }
+                }
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .accessibilityLabel("키워드 차단 모드")
+                if !licenseManager.isPro {
+                    ProBadge()
                 }
             }
-            .toggleStyle(.switch)
-            .controlSize(.mini)
 
             if viewModel.isKeywordMode {
                 Text("주요 TLD(.com, .net, .org, .io, .co)에 키워드를 조합하여 차단합니다.")
@@ -195,6 +240,7 @@ struct WebsiteBlockView: View {
 #Preview {
     WebsiteBlockView(selectedProfile: nil)
         .environment(ThemeManager.shared)
+        .environment(LicenseManager.shared)
         .modelContainer(for: [
             BlockedSite.self, BlockedApp.self,
             BlockProfile.self, FocusSession.self,

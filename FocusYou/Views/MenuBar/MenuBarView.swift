@@ -8,10 +8,12 @@ struct MenuBarView: View {
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.openWindow) private var openWindow
 
-    @Query(sort: \FocusSession.startedAt, order: .reverse)
+    @Query(
+        filter: #Predicate<FocusSession> { $0.wasCompleted },
+        sort: \FocusSession.startedAt,
+        order: .reverse
+    )
     private var sessions: [FocusSession]
-
-    @State private var blockingPulse = false
 
     /// 앱 시작 시 대시보드를 1회만 자동 열기 위한 플래그
     private static var hasAutoOpenedDashboard = false
@@ -97,10 +99,9 @@ struct MenuBarView: View {
 
     private var blockingBadge: some View {
         HStack(spacing: 4) {
-            Circle()
-                .fill(themeManager.primary)
-                .frame(width: 6, height: 6)
-                .opacity(blockingPulse ? 0.4 : 1.0)
+            Image(systemName: "circle.fill")
+                .font(.system(size: 6))
+                .symbolEffect(.pulse, options: .repeating, isActive: true)
 
             Text("차단 중")
                 .font(.caption2.weight(.semibold))
@@ -110,11 +111,6 @@ struct MenuBarView: View {
         .background(themeManager.primary.opacity(0.1))
         .foregroundStyle(themeManager.primary)
         .clipShape(Capsule())
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
-                blockingPulse = true
-            }
-        }
     }
 
     // MARK: - 에러 패널
@@ -251,6 +247,7 @@ struct MenuBarView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(title)
     }
 }
 
@@ -259,6 +256,7 @@ struct MenuBarView: View {
         .environment(AppState())
         .environment(SettingsViewModel())
         .environment(ThemeManager.shared)
+        .environment(LicenseManager.shared)
         .modelContainer(for: [
             BlockedSite.self, BlockedApp.self,
             BlockProfile.self, FocusSession.self,

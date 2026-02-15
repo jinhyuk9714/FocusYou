@@ -124,6 +124,19 @@ final class ThemeManager {
         selectedThemeID = id
     }
 
+    /// Pro 제한 시 무료 테마만 반환 (v2.0)
+    var freeThemes: [AppTheme] {
+        Array(availableThemes.prefix(Constants.Subscription.freeThemeLimit))
+    }
+
+    /// 특정 테마가 무료인지 확인 (v2.0)
+    func isThemeFree(_ theme: AppTheme) -> Bool {
+        guard let index = availableThemes.firstIndex(where: { $0.id == theme.id }) else {
+            return false
+        }
+        return index < Constants.Subscription.freeThemeLimit
+    }
+
     private func normalizedThemeID(from id: String?) -> String {
         Self.resolveThemeID(id, from: availableThemes)
     }

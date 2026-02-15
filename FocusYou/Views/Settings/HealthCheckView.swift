@@ -168,7 +168,7 @@ struct HealthCheckView: View {
     private func diagnosticIcon(status: Bool) -> some View {
         IconBadge(
             systemName: status ? "checkmark.circle.fill" : "exclamationmark.triangle.fill",
-            color: status ? .green : themeManager.stopButton,
+            color: status ? themeManager.success : themeManager.stopButton,
             size: 28
         )
     }

@@ -6,10 +6,12 @@ import SwiftData
 struct AppBlockView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(LicenseManager.self) private var licenseManager
     @Query private var blockedApps: [BlockedApp]
     @State private var viewModel = BlockListViewModel()
     @State private var installedApps: [BlockListViewModel.InstalledApp] = []
     @State private var isLoading = true
+    @State private var showPaywall = false
     let selectedProfile: BlockProfile?
 
     private var scopedBlockedApps: [BlockedApp] {
@@ -25,11 +27,30 @@ struct AppBlockView: View {
     var body: some View {
         VStack(spacing: Constants.Design.spacingMD) {
             searchField
+
+            // 무료 한도 카운터 (v2.0)
+            if !licenseManager.isPro {
+                HStack {
+                    Spacer()
+                    Text("\(scopedBlockedApps.count)/\(Constants.Subscription.freeAppLimit)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(
+                            scopedBlockedApps.count >= Constants.Subscription.freeAppLimit
+                                ? themeManager.warning : .secondary
+                        )
+                    ProBadge()
+                }
+            }
+
             appContent
         }
         .task {
             installedApps = viewModel.scanInstalledApps()
             isLoading = false
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView(reason: .appLimit)
+                .environment(themeManager)
         }
     }
 
@@ -139,6 +160,10 @@ struct AppBlockView: View {
             Toggle("", isOn: Binding(
                 get: { isBlocked },
                 set: { newValue in
+                    if newValue && !licenseManager.canAddApp(currentCount: scopedBlockedApps.count) {
+                        showPaywall = true
+                        return
+                    }
                     viewModel.toggleApp(
                         app,
                         isBlocked: newValue,
@@ -151,6 +176,7 @@ struct AppBlockView: View {
             .toggleStyle(.switch)
             .controlSize(.small)
             .tint(themeManager.primary)
+            .accessibilityLabel("\(app.name) 차단 토글")
         }
         .frame(height: 44)
         .accessibilityLabel("\(app.name), \(isBlocked ? "차단 중" : "차단 안 함")")
@@ -193,6 +219,7 @@ extension View {
 #Preview {
     AppBlockView(selectedProfile: nil)
         .environment(ThemeManager.shared)
+        .environment(LicenseManager.shared)
         .modelContainer(for: [
             BlockedSite.self, BlockedApp.self,
             BlockProfile.self, FocusSession.self,

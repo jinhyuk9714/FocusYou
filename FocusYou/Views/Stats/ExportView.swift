@@ -78,7 +78,7 @@ struct ExportView: View {
                         systemImage: success ? "checkmark.circle.fill" : "xmark.circle.fill"
                     )
                     .font(.caption.weight(.medium))
-                    .foregroundStyle(success ? .green : .red)
+                    .foregroundStyle(success ? themeManager.success : themeManager.danger)
                     .transition(.opacity)
                 }
             }

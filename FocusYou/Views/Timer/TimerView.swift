@@ -7,10 +7,12 @@ struct IdleContentView: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var themeManager
     @Environment(SettingsViewModel.self) private var settingsViewModel
+    @Environment(LicenseManager.self) private var licenseManager
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel = TimerViewModel()
     @State private var showIntentionInput = false
     @State private var intentionText = ""
+    @State private var showPaywall = false
     @State private var burnoutDetector = BurnoutDetector.shared
     @Namespace private var modeNamespace
 
@@ -73,6 +75,10 @@ struct IdleContentView: View {
         }
         .onChange(of: profiles.count) { _, _ in
             appState.ensureActiveProfile(in: profiles)
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView(reason: .timerLimit)
+                .environment(themeManager)
         }
     }
 
@@ -162,7 +168,7 @@ struct IdleContentView: View {
                 )
             }
         }
-        .padding(3)
+        .padding(Constants.Design.spacingXS)
         .background(Color.secondary.opacity(0.08), in: Capsule())
     }
 
@@ -243,6 +249,12 @@ struct IdleContentView: View {
 
     // MARK: - 커스텀 슬라이더
 
+    private var sliderMaxMinutes: Int {
+        licenseManager.isPro
+            ? Constants.Timer.maximumMinutes
+            : Constants.Subscription.freeTimerMaxMinutes
+    }
+
     private var customSlider: some View {
         VStack(spacing: Constants.Design.spacingXS) {
             Slider(
@@ -250,15 +262,28 @@ struct IdleContentView: View {
                     get: { viewModel.customMinutes },
                     set: { viewModel.updateCustomMinutes($0) }
                 ),
-                in: Double(Constants.Timer.minimumMinutes)...Double(Constants.Timer.maximumMinutes),
+                in: Double(Constants.Timer.minimumMinutes)...Double(sliderMaxMinutes),
                 step: 1
             )
             .tint(themeManager.primary)
+            .accessibilityLabel("타이머 시간 설정")
 
             HStack {
                 Text("\(Constants.Timer.minimumMinutes)분")
                 Spacer()
-                Text("\(Constants.Timer.maximumMinutes)분")
+                if !licenseManager.isPro {
+                    Button {
+                        showPaywall = true
+                    } label: {
+                        HStack(spacing: 2) {
+                            Text("\(sliderMaxMinutes)분")
+                            ProBadge()
+                        }
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Text("\(sliderMaxMinutes)분")
+                }
             }
             .font(.caption2)
             .foregroundStyle(.tertiary)
@@ -780,7 +805,11 @@ struct CompletedContentView: View {
     @Environment(AppState.self) private var appState
     @Environment(ThemeManager.self) private var themeManager
     @Environment(SettingsViewModel.self) private var settingsViewModel
-    @Query(sort: \FocusSession.startedAt, order: .reverse)
+    @Query(
+        filter: #Predicate<FocusSession> { $0.wasCompleted },
+        sort: \FocusSession.startedAt,
+        order: .reverse
+    )
     private var sessions: [FocusSession]
     @State private var checkScale: CGFloat = 0
     @State private var showSummary = false
@@ -1009,6 +1038,7 @@ private struct ConfettiParticle: Identifiable {
         .environment(AppState())
         .environment(ThemeManager.shared)
         .environment(SettingsViewModel())
+        .environment(LicenseManager.shared)
         .frame(width: 340)
         .padding()
 }

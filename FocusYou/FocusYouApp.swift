@@ -8,6 +8,7 @@ struct FocusYouApp: App {
     @State private var appState: AppState
     @State private var settingsViewModel: SettingsViewModel
     @State private var themeManager: ThemeManager
+    @State private var licenseManager: LicenseManager
     @State private var didBootstrap = false
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
@@ -33,6 +34,7 @@ struct FocusYouApp: App {
         _appState = State(initialValue: state)
         _settingsViewModel = State(initialValue: SettingsViewModel())
         _themeManager = State(initialValue: ThemeManager.shared)
+        _licenseManager = State(initialValue: LicenseManager.shared)
 
         #if DEBUG
         QAAutomationController.shared.startIfNeeded(
@@ -52,6 +54,7 @@ struct FocusYouApp: App {
                 .environment(appState)
                 .environment(settingsViewModel)
                 .environment(themeManager)
+                .environment(licenseManager)
                 .task {
                     guard !didBootstrap else { return }
                     didBootstrap = true
@@ -101,6 +104,7 @@ struct FocusYouApp: App {
                 .environment(appState)
                 .environment(settingsViewModel)
                 .environment(themeManager)
+                .environment(licenseManager)
         }
         .defaultSize(width: 840, height: 620)
 
@@ -110,6 +114,7 @@ struct FocusYouApp: App {
                 .modelContainer(modelContainer)
                 .environment(appState)
                 .environment(themeManager)
+                .environment(licenseManager)
         }
         .defaultSize(width: 520, height: 450)
 
@@ -118,6 +123,7 @@ struct FocusYouApp: App {
             ProfileListView()
                 .modelContainer(modelContainer)
                 .environment(themeManager)
+                .environment(licenseManager)
         }
         .defaultSize(width: 520, height: 400)
 
@@ -126,6 +132,7 @@ struct FocusYouApp: App {
             StatsView()
                 .modelContainer(modelContainer)
                 .environment(themeManager)
+                .environment(licenseManager)
         }
         .defaultSize(width: 620, height: 700)
 
@@ -135,6 +142,7 @@ struct FocusYouApp: App {
                 .modelContainer(modelContainer)
                 .environment(settingsViewModel)
                 .environment(themeManager)
+                .environment(licenseManager)
         }
         .defaultSize(width: 420, height: 360)
     }
