@@ -197,7 +197,7 @@ final class AppState {
             }
         }
 
-        // 앱 시작 시 긴급 정리 확인
+        // 앱 시작 시 긴급 정리 + 구독 상태 검증
         if shouldRunStartupCleanup {
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -210,6 +210,9 @@ final class AppState {
                         canRetryDeactivation: true
                     )
                 }
+
+                // StoreKit 영수증 재검증 → UserDefaults 캐시와 동기화 (#11)
+                await SubscriptionManager.shared.refreshEntitlements()
             }
         }
 
@@ -431,6 +434,7 @@ final class AppState {
 
         // 세션 기록 업데이트
         currentSession?.cancel(actualDuration: elapsed)
+        try? currentSession?.modelContext?.save()
         currentSession = nil
         endFlowmodoroIfNeeded()
         endPomodoroIfNeeded()
@@ -630,6 +634,7 @@ final class AppState {
 
         // 3. 세션 기록
         currentSession?.complete(actualDuration: actualDuration)
+        try? currentSession?.modelContext?.save()
         completedSession = currentSession
         lastCompletedIntention = currentSession?.intention
         currentSession = nil
@@ -647,10 +652,11 @@ final class AppState {
         endFlowmodoroIfNeeded()
         endPomodoroIfNeeded()
 
-        // 4. Apple Calendar 동기화 (v1.3)
-        if UserDefaults.standard.bool(forKey: Constants.Settings.enableCalendarSyncKey),
+        // 4. Apple Calendar 동기화 (v1.3) — Pro 전용, @MainActor에서 실행
+        if LicenseManager.shared.isPro,
+           UserDefaults.standard.bool(forKey: Constants.Settings.enableCalendarSyncKey),
            let session = completedSession {
-            Task {
+            Task { @MainActor in
                 if let eventID = await CalendarSyncService.shared.createEvent(for: session) {
                     session.calendarEventID = eventID
                 }
@@ -863,6 +869,7 @@ final class AppState {
     private func startAmbientSoundIfEnabled() async {
         let defaults = UserDefaults.standard
         guard defaults.bool(forKey: Constants.Settings.enableAmbientSoundKey) else { return }
+        guard !LicenseManager.shared.requiresPro(feature: .ambientSound) else { return }
 
         let trackRaw = defaults.string(forKey: Constants.Settings.ambientSoundTrackKey)
             ?? Constants.Settings.ambientSoundTrackDefault

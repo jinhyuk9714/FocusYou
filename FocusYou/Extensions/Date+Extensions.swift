@@ -28,10 +28,11 @@ extension Date {
         Calendar.current.startOfDay(for: self)
     }
 
-    /// 이번 주 시작 시각 (월요일)
+    /// 이번 주 시작 시각 (로케일의 firstWeekday 기준)
     var startOfWeek: Date {
         let calendar = Calendar.current
-        let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: self)
+        var components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: self)
+        components.weekday = calendar.firstWeekday
         return calendar.date(from: components) ?? self
     }
 }

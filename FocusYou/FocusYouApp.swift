@@ -59,6 +59,10 @@ struct FocusYouApp: App {
                 .task {
                     guard !didBootstrap else { return }
                     didBootstrap = true
+
+                    // AppDelegate에 강참조 저장 (씬 리빌드 시에도 AppState 유지)
+                    (NSApp.delegate as? AppDelegate)?.appStateRef = appState
+
                     ProfileBootstrapper.ensureDefaultProfileAndMigrateOrphans(
                         modelContext: modelContainer.mainContext
                     )
@@ -169,6 +173,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     )
     private var isTerminationCleanupInProgress = false
     private var windowObservers: [Any] = []
+
+    /// AppState 강참조 — 씬 리빌드 시에도 유지하여 AppIntents/Widget 접근 보장
+    var appStateRef: AppState?
+
+    /// 대시보드 자동 열기 1회 제한 플래그
+    var hasAutoOpenedDashboard = false
 
     /// 앱 윈도우로 인식할 Window Scene ID (로케일 무관)
     private static let appWindowIDs: Set<String> = [

@@ -61,7 +61,7 @@ enum ProfileBootstrapper {
         }
 
         if let firstProfile = existingProfiles.first {
-            firstProfile.isDefault = true
+            firstProfile.setAsDefault(allProfiles: existingProfiles)
             return firstProfile
         }
 

@@ -15,8 +15,7 @@ struct MenuBarView: View {
     )
     private var sessions: [FocusSession]
 
-    /// 앱 시작 시 대시보드를 1회만 자동 열기 위한 플래그
-    private static var hasAutoOpenedDashboard = false
+    /// 대시보드 자동 열기 플래그는 AppDelegate에서 관리 (씬 리빌드 시에도 유지)
 
     var body: some View {
         VStack(spacing: Constants.Design.spacingLG) {
@@ -53,8 +52,9 @@ struct MenuBarView: View {
         .animation(.quickEase, value: appState.showError)
         .animation(.quickEase, value: appState.showPrivateRelayWarning)
         .task {
-            guard !Self.hasAutoOpenedDashboard else { return }
-            Self.hasAutoOpenedDashboard = true
+            guard let delegate = NSApp.delegate as? AppDelegate,
+                  !delegate.hasAutoOpenedDashboard else { return }
+            delegate.hasAutoOpenedDashboard = true
             try? await Task.sleep(for: .milliseconds(300))
             openWindow(id: "main-dashboard")
         }

@@ -94,4 +94,12 @@ final class BlockProfile {
         profile.isDefault = true
         return profile
     }
+
+    /// 이 프로필을 기본으로 설정 (다른 프로필의 isDefault를 모두 해제)
+    func setAsDefault(allProfiles: [BlockProfile]) {
+        for profile in allProfiles {
+            profile.isDefault = false
+        }
+        self.isDefault = true
+    }
 }

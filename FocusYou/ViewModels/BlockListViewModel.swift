@@ -41,6 +41,20 @@ final class BlockListViewModel {
                 return
             }
 
+            // Pro 한도 체크
+            let keywordCount: Int
+            if let profile {
+                keywordCount = profile.blockedSites.filter { $0.isKeywordPattern ?? false }.count
+            } else {
+                let descriptor = FetchDescriptor<BlockedSite>()
+                keywordCount = (try? modelContext.fetch(descriptor))?
+                    .filter { ($0.isKeywordPattern ?? false) && $0.profile == nil }.count ?? 0
+            }
+            guard LicenseManager.shared.canAddWebsite(currentCount: keywordCount) else {
+                errorMessage = String(localized: "error_pro_limit_reached")
+                return
+            }
+
             let isDuplicate: Bool
             if let profile {
                 isDuplicate = profile.blockedSites.contains { $0.domain == input && ($0.isKeywordPattern ?? false) }
@@ -67,6 +81,20 @@ final class BlockListViewModel {
 
         guard !normalized.isEmpty else {
             errorMessage = String(localized: "error_invalid_url")
+            return
+        }
+
+        // Pro 한도 체크
+        let siteCount: Int
+        if let profile {
+            siteCount = profile.blockedSites.filter { !($0.isKeywordPattern ?? false) }.count
+        } else {
+            let descriptor = FetchDescriptor<BlockedSite>()
+            siteCount = (try? modelContext.fetch(descriptor))?
+                .filter { !($0.isKeywordPattern ?? false) && $0.profile == nil }.count ?? 0
+        }
+        guard LicenseManager.shared.canAddWebsite(currentCount: siteCount) else {
+            errorMessage = String(localized: "error_pro_limit_reached")
             return
         }
 
@@ -163,6 +191,17 @@ final class BlockListViewModel {
         let bundleId = installedApp.bundleId
 
         if isBlocked {
+            // Pro 한도 체크
+            let appCount: Int
+            if let profile {
+                appCount = profile.blockedApps.count
+            } else {
+                let descriptor = FetchDescriptor<BlockedApp>()
+                appCount = (try? modelContext.fetch(descriptor))?
+                    .filter { $0.profile == nil }.count ?? 0
+            }
+            guard LicenseManager.shared.canAddApp(currentCount: appCount) else { return }
+
             // 중복 확인
             let alreadyBlocked: Bool
             if let profile {

@@ -3,6 +3,8 @@ import os
 
 // MARK: - hosts 파일 관리자
 // /etc/hosts 파일의 마커 구간을 관리하여 웹사이트 차단 수행
+// NOTE: 파일 I/O는 의도적으로 동기식 — /etc/hosts는 <1KB이며 sub-millisecond 완료.
+// actor 격리가 스레드 안전을 보장하므로 async 전환 대비 복잡도 증가가 정당화되지 않음.
 
 actor HostsFileManager {
     static let shared = HostsFileManager()

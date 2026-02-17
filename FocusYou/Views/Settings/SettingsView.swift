@@ -8,6 +8,7 @@ struct SettingsView: View {
     @Environment(LicenseManager.self) private var licenseManager
 
     @State private var isPreviewPlaying = false
+    @State private var previewTask: Task<Void, Never>?
     @State private var showPaywall = false
     @State private var paywallReason: PaywallReason = .proFeature(.ambientSound)
     @State private var expandedThemeCategory: String?
@@ -301,23 +302,28 @@ struct SettingsView: View {
     }
 
     private func toggleSoundPreview() {
-        Task {
-            if isPreviewPlaying {
-                await AmbientSoundManager.shared.stop()
-                isPreviewPlaying = false
-            } else {
-                let track = AmbientSoundTrack(rawValue: viewModel.ambientSoundTrack) ?? .whiteNoise
-                await AmbientSoundManager.shared.play(
-                    track: track,
-                    volume: Float(viewModel.ambientSoundVolume)
-                )
-                isPreviewPlaying = true
+        previewTask?.cancel()
+        previewTask = nil
 
-                // 5초 후 자동 정지
-                try? await Task.sleep(for: .seconds(5))
-                await AmbientSoundManager.shared.stop()
-                isPreviewPlaying = false
-            }
+        if isPreviewPlaying {
+            Task { await AmbientSoundManager.shared.stop() }
+            isPreviewPlaying = false
+            return
+        }
+
+        previewTask = Task {
+            let track = AmbientSoundTrack(rawValue: viewModel.ambientSoundTrack) ?? .whiteNoise
+            await AmbientSoundManager.shared.play(
+                track: track,
+                volume: Float(viewModel.ambientSoundVolume)
+            )
+            isPreviewPlaying = true
+
+            // 5초 후 자동 정지
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled else { return }
+            await AmbientSoundManager.shared.stop()
+            isPreviewPlaying = false
         }
     }
 

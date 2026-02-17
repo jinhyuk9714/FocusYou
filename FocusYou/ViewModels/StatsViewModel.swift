@@ -54,9 +54,9 @@ final class StatsViewModel {
 
     // MARK: - 기본 통계
 
-    /// 총 집중 시간 (초)
+    /// 총 집중 시간 (초) — 완료된 세션만 집계
     func totalFocusSeconds(from sessions: [FocusSession]) -> Int {
-        filteredSessions(from: sessions).reduce(0) { $0 + $1.actualDuration }
+        filteredSessions(from: sessions).filter(\.wasCompleted).reduce(0) { $0 + $1.actualDuration }
     }
 
     /// 총 세션 수
@@ -106,9 +106,9 @@ final class StatsViewModel {
 
     // MARK: - 차트 데이터
 
-    /// 일별 차트 데이터
+    /// 일별 차트 데이터 — 완료된 세션만 집계
     func dailyData(from sessions: [FocusSession]) -> [DailyFocusEntry] {
-        let filtered = filteredSessions(from: sessions)
+        let filtered = filteredSessions(from: sessions).filter(\.wasCompleted)
         let calendar = Calendar.current
 
         var grouped: [Date: Int] = [:]
@@ -122,9 +122,9 @@ final class StatsViewModel {
             .sorted { $0.date < $1.date }
     }
 
-    /// 히트맵 데이터 (v1.5): 일별 집중 시간 (시간 단위)
+    /// 히트맵 데이터 (v1.5): 일별 집중 시간 (시간 단위) — 완료된 세션만 집계
     func heatmapData(from sessions: [FocusSession]) -> [HeatmapEntry] {
-        let filtered = filteredSessions(from: sessions)
+        let filtered = filteredSessions(from: sessions).filter(\.wasCompleted)
         let calendar = Calendar.current
 
         var grouped: [Date: Int] = [:]

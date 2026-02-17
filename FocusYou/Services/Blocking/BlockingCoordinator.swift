@@ -65,6 +65,15 @@ actor BlockingCoordinator {
         appBundleIds: [String],
         blocklistMode: String = "blocklist"
     ) async throws {
+        // idle 또는 error 상태에서만 활성화 허용 (error 복구 포함)
+        switch state {
+        case .idle, .error:
+            break
+        case .blocking:
+            logger.error("차단 활성 중 재활성화 시도 차단")
+            throw FocusYouError.blockingAlreadyActive
+        }
+
         logger.info("차단 활성화 시작: 사이트 \(domains.count)개, 앱 \(appBundleIds.count)개, 모드: \(blocklistMode)")
 
         guard !domains.isEmpty || !appBundleIds.isEmpty else {
@@ -362,7 +371,7 @@ actor BlockingCoordinator {
             <array>
                 <string>/bin/bash</string>
                 <string>-c</string>
-                <string>if [ -f \(quotedActiveIndicatorPath) ] &amp;&amp; [ -f \(quotedBackupPath) ]; then if sudo -n \(quotedHelperPath) \(quotedBackupPath) 2>/dev/null; then rm -f \(quotedActiveIndicatorPath) \(quotedBackupPath) \(quotedLaunchAgentPath); fi; fi</string>
+                <string>if [ -f \(quotedActiveIndicatorPath) ] &amp;&amp; [ -f \(quotedBackupPath) ]; then if sudo -n \(quotedHelperPath) \(quotedBackupPath) 2>/dev/null; then rm -f \(quotedActiveIndicatorPath) \(quotedBackupPath) \(quotedLaunchAgentPath); elif osascript -e 'do shell script "cp \(quotedBackupPath) /etc/hosts" with administrator privileges' 2>/dev/null; then rm -f \(quotedActiveIndicatorPath) \(quotedBackupPath) \(quotedLaunchAgentPath); fi; fi</string>
             </array>
             <key>RunAtLoad</key>
             <true/>

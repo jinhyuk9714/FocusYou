@@ -545,6 +545,7 @@
 "error_duplicate_keyword" = "This keyword is already added";
 "error_invalid_url" = "Please enter a valid URL";
 "error_duplicate_site" = "This site is already added";
+"error_pro_limit_reached" = "Free plan limit reached. Upgrade to Pro for unlimited access.";
 "error_preset_load_failed" = "Failed to load preset data";
 
 // -- ProfileViewModel: error messages --

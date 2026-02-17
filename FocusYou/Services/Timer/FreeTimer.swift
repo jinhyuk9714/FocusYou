@@ -173,12 +173,13 @@ final class FreeTimer {
         removeSleepObservers()
         let wsnc = NSWorkspace.shared.notificationCenter
 
+        // queue: .main 보장 → MainActor.assumeIsolated로 즉시 실행 (Task 이중 디스패치 제거)
         sleepObservers.append(
             wsnc.addObserver(
                 forName: NSWorkspace.willSleepNotification,
                 object: nil, queue: .main
             ) { [weak self] _ in
-                Task { @MainActor in self?.handleSystemSleep() }
+                MainActor.assumeIsolated { self?.handleSystemSleep() }
             }
         )
 
@@ -187,7 +188,7 @@ final class FreeTimer {
                 forName: NSWorkspace.didWakeNotification,
                 object: nil, queue: .main
             ) { [weak self] _ in
-                Task { @MainActor in self?.handleSystemWake() }
+                MainActor.assumeIsolated { self?.handleSystemWake() }
             }
         )
     }

@@ -90,7 +90,10 @@ actor PrivilegedHelper {
         // hosts 파일 쓰기 + DNS 플러시를 하나의 admin 스크립트로 통합
         // → 비밀번호 다이얼로그 1회만 등장
         // macOS 26+: HUP 후 SIGTERM으로 mDNSResponder 완전 재시작 (launchd 자동 복구)
-        let script = "cp \"\(tempPath)\" \"\(path)\" && chmod 644 \"\(path)\" && dscacheutil -flushcache && killall -HUP mDNSResponder && sleep 1 && (killall mDNSResponder 2>/dev/null || true)"
+        // 경로 내 쉘 특수문자 이스케이프 (backtick, dollar 방어)
+        let safeTempPath = shellEscapeForDoubleQuotes(tempPath)
+        let safePath = shellEscapeForDoubleQuotes(path)
+        let script = "cp \"\(safeTempPath)\" \"\(safePath)\" && chmod 644 \"\(safePath)\" && dscacheutil -flushcache && killall -HUP mDNSResponder && sleep 1 && (killall mDNSResponder 2>/dev/null || true)"
         _ = try await executeAsAdmin(script: script)
     }
 
@@ -264,6 +267,13 @@ actor PrivilegedHelper {
         }
 
         return true
+    }
+
+    /// double-quote 쉘 문자열 내 특수문자 이스케이프 (backtick, dollar)
+    private func shellEscapeForDoubleQuotes(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "`", with: "\\`")
+            .replacingOccurrences(of: "$", with: "\\$")
     }
 
     /// 임시 파일 생성 헬퍼

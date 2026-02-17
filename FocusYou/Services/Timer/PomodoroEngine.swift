@@ -89,15 +89,16 @@ final class PomodoroEngine {
                 )
             )
 
-            let breakType: PhaseType = (cycle == configuration.cycles) ? .longBreak : .shortBreak
-            let breakMinutes = (breakType == .longBreak) ? configuration.longBreakMinutes : configuration.shortBreakMinutes
-            built.append(
-                Phase(
-                    type: breakType,
-                    duration: TimeInterval(breakMinutes * 60),
-                    cycleIndex: cycle
+            // 마지막 사이클 후에는 break 없음 → 세션 완료
+            if cycle < configuration.cycles {
+                built.append(
+                    Phase(
+                        type: .shortBreak,
+                        duration: TimeInterval(configuration.shortBreakMinutes * 60),
+                        cycleIndex: cycle
+                    )
                 )
-            )
+            }
         }
 
         return built
