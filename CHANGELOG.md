@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented in this file.
 
+## [2.2.1] - 2026-02-19
+
+### Added
+- 테스트 커버리지 강화: 4개 신규 테스트 파일, ~23개 테스트 추가.
+  - CalendarSyncServiceTests: 이벤트 제목/노트 생성 검증 (6개).
+  - AppBlockerTests: 활성화/비활성화 상태 전이 (4개).
+  - BlockProfileModelTests: 모델 초기값, 타이머 모드, 취소 강도 (5개).
+  - FreeTimerAdjustedResumeTests: 실시간 조정 재개 (5개).
+  - FocusModeControllerTests 확장: DND 상태 추적 (3개).
+
+### Changed
+- CalendarSyncService: eventTitle/eventNotes 접근 제어자 internal로 변경 (테스트 접근용).
+- AppBlocker: isMonitoring → isMonitoringActive (private(set) internal 접근).
+
 ## [2.2.0] - 2026-02-19
 
 ### Added

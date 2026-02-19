@@ -108,7 +108,7 @@ final class CalendarSyncService {
         return newCalendar
     }
 
-    private func eventTitle(for session: FocusSession) -> String {
+    func eventTitle(for session: FocusSession) -> String {
         let mode = switch session.timerMode {
         case "pomodoro": String(localized: "timer_mode_pomodoro")
         case "flowmodoro": String(localized: "timer_mode_flowmodoro")
@@ -119,7 +119,7 @@ final class CalendarSyncService {
         return "\(mode) \(duration)"
     }
 
-    private func eventNotes(for session: FocusSession) -> String {
+    func eventNotes(for session: FocusSession) -> String {
         var notes = String(localized: "calendar_session_header")
 
         if let profileName = session.profileName {

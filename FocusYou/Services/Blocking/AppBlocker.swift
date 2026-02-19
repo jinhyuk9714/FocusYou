@@ -15,7 +15,7 @@ final class AppBlocker {
 
     private var blockedBundleIds: Set<String> = []
     private var launchObservation: NSObjectProtocol?
-    private var isMonitoring = false
+    private(set) var isMonitoringActive = false
 
     private init() {}
 
@@ -69,8 +69,8 @@ final class AppBlocker {
 
     /// NSWorkspace 알림으로 새 앱 실행 감시 시작
     private func startMonitoring() {
-        guard !isMonitoring else { return }
-        isMonitoring = true
+        guard !isMonitoringActive else { return }
+        isMonitoringActive = true
 
         launchObservation = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didLaunchApplicationNotification,
@@ -104,8 +104,8 @@ final class AppBlocker {
 
     /// 감시 중지
     private func stopMonitoring() {
-        guard isMonitoring else { return }
-        isMonitoring = false
+        guard isMonitoringActive else { return }
+        isMonitoringActive = false
 
         if let observation = launchObservation {
             NSWorkspace.shared.notificationCenter.removeObserver(observation)
