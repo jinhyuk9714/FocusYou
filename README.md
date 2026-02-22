@@ -36,7 +36,6 @@
 - **macOS Focus Mode** — 시스템 집중 모드 연동
 - **Apple Calendar** — 세션 자동 기록
 - **스케줄** — 요일별 자동 세션
-- **앰비언트 사운드** — 빗소리, 카페, 자연, 화이트 노이즈
 - **번아웃 방지** — 일일 한계, 균형 점수, 스트레칭 알림
 
 ## 설치
@@ -115,9 +114,11 @@ defaults delete com.sungjh.focusyou debugSecondsPerMinute
 | **v0.3** | 뽀모도로 + 파이차트 타이머 | ✅ |
 | **v0.5** | 테마 70+ + 프로필 + 통계 | ✅ |
 | **v1.0** | Flowmodoro + 스트릭 + 온보딩 | ✅ |
-| **v1.4** | Shortcuts + Widget + Focus Mode + 앱 디밍 | ✅ |
+| **v1.4** | Shortcuts + Widget + Focus Mode | ✅ |
 | **v1.5** | 성장 시스템 + 번아웃 방지 + 내보내기 | ✅ |
-| v2.0 | Pro 구독 + Network Extension + App Store | 예정 |
+| **v2.0** | Pro 구독 + Network Extension 인프라 | ✅ |
+| **v2.3** | 뷰 리팩토링 + 테스트 304개 | ✅ |
+| v3.0 | AI 인사이트 + iOS | 예정 |
 
 변경 내역은 `CHANGELOG.md`를 참고하세요.
 

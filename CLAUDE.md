@@ -101,7 +101,7 @@ private let logger = Logger(subsystem: "com.sungjh.focusyou", category: "Timer")
 
 ## 프로젝트 구조
 
-> v2.3.2 기준 실제 파일 구조. 소스 114파일, 테스트 43파일.
+> v2.3.2 기준 실제 파일 구조. 소스 123파일, 테스트 43파일.
 
 ```
 FocusYou/
@@ -129,18 +129,24 @@ FocusYou/
 │   ├── MenuBar/
 │   │   └── MenuBarView.swift            # 메뉴바 팝오버 메인 (~236줄)
 │   ├── Main/
-│   │   ├── MainDashboardView.swift      # 메인 대시보드 윈도우 (~1,021줄)
-│   │   ├── DashboardStatsRowView.swift  # 오늘 통계 요약 행 (v2.3)
-│   │   ├── DashboardQuickActionsView.swift  # 퀵 액션 + 테마 피커 (v2.3)
+│   │   ├── MainDashboardView.swift       # 메인 대시보드 윈도우 (~187줄)
+│   │   ├── DashboardIdleHeroView.swift   # 대시보드 유휴 히어로 (v2.3.1)
+│   │   ├── DashboardActiveHeroView.swift # 대시보드 집중 히어로 (v2.3.1)
+│   │   ├── DashboardCompletedHeroView.swift # 대시보드 완료 히어로 (v2.3.1)
+│   │   ├── DashboardStatsRowView.swift   # 오늘 통계 요약 행 (v2.3)
+│   │   ├── DashboardQuickActionsView.swift # 퀵 액션 + 테마 피커 (v2.3)
 │   │   └── DashboardRecentSessionsView.swift # 오늘 세션 목록 (v2.3)
 │   ├── Timer/
-│   │   ├── IdleContentView.swift        # 유휴 상태 UI (v2.3, 구 TimerView 분리)
-│   │   ├── FocusingContentView.swift    # 집중 중 UI (v2.3, 구 TimerView 분리)
-│   │   ├── CompletedContentView.swift   # 완료 UI (v2.3, 구 TimerView 분리)
-│   │   ├── PieChartTimerView.swift      # 파이차트
-│   │   ├── PomodoroConfigView.swift     # 뽀모도로 설정
-│   │   ├── IntentionInputView.swift     # 의도 입력 (v1.x)
-│   │   └── RetrospectView.swift         # 회고 (v1.x)
+│   │   ├── IdleContentView.swift         # 유휴 상태 UI (~292줄)
+│   │   ├── IdleTimerConfigView.swift     # 타이머 설정 폼 (v2.3.1)
+│   │   ├── FocusingContentView.swift     # 집중 중 UI (~201줄)
+│   │   ├── FocusingStatusView.swift      # 집중 상태 표시 (v2.3.1)
+│   │   ├── FocusingControlsView.swift    # 집중 컨트롤 (v2.3.1)
+│   │   ├── CompletedContentView.swift    # 완료 UI (v2.3)
+│   │   ├── PieChartTimerView.swift       # 파이차트
+│   │   ├── PomodoroConfigView.swift      # 뽀모도로 설정
+│   │   ├── IntentionInputView.swift      # 의도 입력 (v1.x)
+│   │   └── RetrospectView.swift          # 회고 (v1.x)
 │   ├── BlockList/
 │   │   ├── BlockListView.swift
 │   │   ├── WebsiteBlockView.swift
@@ -148,7 +154,8 @@ FocusYou/
 │   │   └── CategoryPickerView.swift
 │   ├── Profile/
 │   │   ├── ProfileListView.swift
-│   │   └── ProfileEditorView.swift
+│   │   ├── ProfileEditorView.swift       # (~95줄)
+│   │   └── ProfileEditorFormSections.swift # 프로필 편집 폼 (v2.3.1)
 │   ├── Stats/
 │   │   ├── StatsView.swift              # 통계 메인 (~176줄)
 │   │   ├── StatsSummaryCardsView.swift  # 요약 카드 (v2.3)
@@ -162,14 +169,16 @@ FocusYou/
 │   │   └── MonthlyTrendView.swift       # 월간 트렌드 (v1.5)
 │   ├── Settings/
 │   │   ├── SettingsView.swift           # 설정 TabView 래퍼 (~29줄)
-│   │   ├── SettingsGeneralTabView.swift # 일반 탭 (v2.3)
-│   │   ├── SettingsFocusTabView.swift   # 집중 탭 (v2.3)
+│   │   ├── SettingsGeneralTabView.swift  # 일반 탭 (~193줄)
+│   │   ├── SettingsThemeSectionView.swift # 테마 설정 섹션 (v2.3.1)
+│   │   ├── SettingsFocusTabView.swift    # 집중 탭 (v2.3)
 │   │   ├── SettingsIntegrationTabView.swift # 연동 탭 (v2.3)
 │   │   ├── SettingsAdvancedTabView.swift # 고급 탭 (v2.3)
 │   │   ├── HealthCheckView.swift        # 차단 진단
 │   │   └── ThemeLivePreviewPanel.swift  # 테마 라이브 프리뷰
 │   ├── Subscription/
-│   │   └── PaywallView.swift            # 구독 유도 UI (v2.0)
+│   │   ├── PaywallView.swift             # 구독 유도 UI (~192줄)
+│   │   └── PaywallContentView.swift      # 페이월 콘텐츠 (v2.3.1)
 │   ├── Schedule/
 │   │   ├── ScheduleListView.swift       # 스케줄 목록 (v1.3)
 │   │   └── ScheduleEditorView.swift     # 스케줄 편집 (v1.3)
