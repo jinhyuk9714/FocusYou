@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [2.3.4] - 2026-04-28
+
 ### Changed
 - README 설치 및 릴리즈 빌드 안내를 signed/notarized DMG 배포 흐름에 맞게 갱신.
 - AppState 구조 안정화: 세션 라이프사이클, 타이머 모드, 프로필/스케줄, 에러 처리, 보상/위젯 공유 로직을 extension 및 작은 helper 타입으로 분리.
