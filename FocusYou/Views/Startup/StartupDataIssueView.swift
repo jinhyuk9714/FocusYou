@@ -69,11 +69,19 @@ struct StartupDataIssueView: View {
                     }
 
                     Button {
+                        previewDataStoreBackup()
+                    } label: {
+                        Label("백업 미리보기", systemImage: "doc.text.magnifyingglass")
+                    }
+
+                    Button {
                         copyDiagnostics()
                     } label: {
                         Label("진단 정보 복사", systemImage: "doc.on.doc")
                     }
+                }
 
+                HStack {
                     Button {
                         openSupportDirectory()
                     } label: {
@@ -170,6 +178,27 @@ struct StartupDataIssueView: View {
             NSWorkspace.shared.activateFileViewerSelecting([result.bundleDirectoryURL])
         } catch {
             actionMessage = "진단 로그 실패: \(error.localizedDescription)"
+        }
+    }
+
+    private func previewDataStoreBackup() {
+        let panel = NSOpenPanel()
+        panel.title = "백업 폴더 선택"
+        panel.prompt = "미리보기"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = false
+        panel.allowsMultipleSelection = false
+
+        guard panel.runModal() == .OK, let backupURL = panel.url else {
+            return
+        }
+
+        do {
+            let preview = try DataStoreRecoveryPreviewService.previewBackup(at: backupURL)
+            actionMessage = preview.statusSummary
+        } catch {
+            actionMessage = "백업 미리보기 실패: \(error.localizedDescription)"
         }
     }
 

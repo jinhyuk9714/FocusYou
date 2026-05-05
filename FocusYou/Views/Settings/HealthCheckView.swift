@@ -15,6 +15,7 @@ struct HealthCheckView: View {
     @State private var isDiagnosing = false
     @State private var dnsFlushResult: String?
     @State private var dataStoreBackupResult: String?
+    @State private var dataStoreRecoveryPreviewResult: String?
     @State private var supportDiagnosticsResult: String?
 
     private let logger = Logger(
@@ -136,6 +137,13 @@ struct HealthCheckView: View {
                         .textSelection(.enabled)
                 }
 
+                if let dataStoreRecoveryPreviewResult {
+                    Text(dataStoreRecoveryPreviewResult)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+
                 if let supportDiagnosticsResult {
                     Text(supportDiagnosticsResult)
                         .font(.caption)
@@ -149,6 +157,13 @@ struct HealthCheckView: View {
             HStack(spacing: 8) {
                 Button("백업") {
                     createDataStoreBackup()
+                }
+                .font(.caption)
+                .buttonStyle(.plain)
+                .foregroundStyle(themeManager.primary)
+
+                Button("백업 미리보기") {
+                    previewDataStoreBackup()
                 }
                 .font(.caption)
                 .buttonStyle(.plain)
@@ -248,6 +263,27 @@ struct HealthCheckView: View {
             NSWorkspace.shared.activateFileViewerSelecting([result.backupDirectoryURL])
         } catch {
             dataStoreBackupResult = "백업 실패: \(error.localizedDescription)"
+        }
+    }
+
+    private func previewDataStoreBackup() {
+        let panel = NSOpenPanel()
+        panel.title = "백업 폴더 선택"
+        panel.prompt = "미리보기"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = false
+        panel.allowsMultipleSelection = false
+
+        guard panel.runModal() == .OK, let backupURL = panel.url else {
+            return
+        }
+
+        do {
+            let preview = try DataStoreRecoveryPreviewService.previewBackup(at: backupURL)
+            dataStoreRecoveryPreviewResult = preview.statusSummary
+        } catch {
+            dataStoreRecoveryPreviewResult = "백업 미리보기 실패: \(error.localizedDescription)"
         }
     }
 
