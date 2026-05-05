@@ -4,6 +4,9 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- v2.3.8 이후 운영 문서 기준선과 CI의 QA 스크립트 검증 단계를 정리.
+
 ## [2.3.8] - 2026-05-05
 
 ### Added

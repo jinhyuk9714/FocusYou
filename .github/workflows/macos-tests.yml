@@ -40,6 +40,11 @@ jobs:
           echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
           xcodegen --version
 
+      - name: Validate QA Scripts
+        run: |
+          bash -n scripts/qa_focusyou_state.sh
+          bash scripts/test_qa_focusyou_state.sh
+
       - name: Generate Project
         run: xcodegen generate
 

@@ -32,18 +32,29 @@
 ## 권장 릴리스 순서
 
 ```bash
-# 1) 릴리스 후보 동기화 상태 확인
-./scripts/release_preflight.sh --stage pre-tag
+# 1) 버전/CHANGELOG 정리 후 main에 커밋/푸시
+xcodegen generate
+git add project.yml FocusYou.xcodeproj CHANGELOG.md
+git commit -m "chore: prepare vX.Y.Z release"
+git push origin main
 
-# 2) 태그 생성
-git tag -a vX.Y.Z -m "release: vX.Y.Z"
+# 2) 태그 전 릴리스 후보 정합성 확인
+./scripts/release_preflight.sh --stage pre-tag --expected-tag vX.Y.Z
 
-# 3) 태그 포함 최종 검증
-./scripts/release_preflight.sh --stage tagged
+# 3) signed/notarized DMG 생성
+./scripts/release.sh
 
-# 4) 푸시
-git push origin main --tags
+# 4) 검증된 main HEAD에 태그 생성/푸시
+git tag -a vX.Y.Z -m "vX.Y.Z"
+git push origin vX.Y.Z
+./scripts/release_preflight.sh --stage tagged --expected-tag vX.Y.Z
+
+# 5) GitHub Release 생성과 공개 asset smoke
+gh release create vX.Y.Z build/FocusYou-X.Y.Z.dmg --title "FocusYou vX.Y.Z" --notes-file /path/to/notes.md --latest
+gh release download vX.Y.Z --repo jinhyuk9714/FocusYou --pattern "FocusYou-X.Y.Z.dmg"
 ```
+
+공개 asset smoke에서는 GitHub Release의 SHA256 digest와 다운로드한 DMG를 비교하고, `spctl`, DMG mount, 앱 `codesign --verify`, 임시 설치 확인을 수행합니다.
 
 ## 옵션
 

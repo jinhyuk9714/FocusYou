@@ -14,17 +14,18 @@ Recent baseline is already stabilized for:
 - blocking activation/deactivation safety
 - crash/reboot recovery
 - helper-based hosts restore
-- QA script and CI (`macOS Tests`)
+- data recovery/diagnostics tools
+- QA script automation and CI (`macOS Tests`)
 
 ## 2) Current Maintenance Scope
 
-Current baseline: `v2.3.3`
+Current baseline: `v2.3.8`
 
 In scope:
 - warning-free Swift 6 / XcodeGen builds
 - blocking lifecycle safety and recovery maintenance
 - release script, CI, and documentation consistency
-- regression-safe integration with current QA/test setup
+- regression-safe integration with current QA/data-tool test setup
 
 Out of scope:
 - iOS expansion
