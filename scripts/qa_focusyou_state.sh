@@ -205,7 +205,7 @@ send_app_command() {
     stop_session|reset_to_idle)
       command_json="$(build_app_command_json "$command_id" "$action")"
       ;;
-    create_data_backup|create_diagnostics_bundle)
+    create_data_backup|create_diagnostics_bundle|create_recovery_import_fixture_backup)
       command_json="$(build_app_command_json "$command_id" "$action" "" "" "$destination_path")"
       ;;
     preview_data_import)
@@ -335,6 +335,25 @@ qa_create_diagnostics_bundle() {
   assert_diagnostics_bundle "$APP_COMMAND_OUTPUT_PATH"
 }
 
+qa_create_recovery_import_fixture() {
+  local destination_dir="${1:-}"
+
+  if [ -z "$destination_dir" ]; then
+    echo "FAIL: destination directory path required"
+    return 1
+  fi
+
+  ensure_app_running || return 1
+  send_app_command "create_recovery_import_fixture_backup" "" "" "$destination_dir" || return 1
+
+  if [ -z "$APP_COMMAND_OUTPUT_PATH" ]; then
+    echo "FAIL: app command did not return outputPath"
+    return 1
+  fi
+
+  assert_data_backup "$APP_COMMAND_OUTPUT_PATH" --require-store
+}
+
 qa_smoke_data_tools() {
   local destination_dir="${1:-}"
 
@@ -443,7 +462,7 @@ qa_smoke_recovery_import() {
     return 1
   fi
 
-  qa_create_data_backup "$destination_dir" --require-store || return 1
+  qa_create_recovery_import_fixture "$destination_dir" || return 1
   backup_dir="$APP_COMMAND_OUTPUT_PATH"
   if [ -z "$backup_dir" ]; then
     echo "FAIL: app command did not return backup outputPath"
@@ -451,7 +470,8 @@ qa_smoke_recovery_import() {
   fi
 
   qa_preview_data_import "$backup_dir" || return 1
-  qa_validate_data_import "$backup_dir"
+  qa_validate_data_import "$backup_dir" || return 1
+  qa_validate_data_import "$backup_dir" --include-sessions --include-badges
 }
 
 json_file_is_valid() {
@@ -769,6 +789,7 @@ Usage:
   $(basename "$0") qa-smoke-start-stop [duration_seconds] [domain]
   $(basename "$0") qa-create-data-backup <destination-dir> [--require-store]
   $(basename "$0") qa-create-diagnostics-bundle <destination-dir>
+  $(basename "$0") qa-create-recovery-import-fixture <destination-dir>
   $(basename "$0") qa-smoke-data-tools <destination-dir>
   $(basename "$0") qa-preview-data-import <FocusYouBackup-* dir>
   $(basename "$0") qa-validate-data-import <FocusYouBackup-* dir> [--include-sessions] [--include-badges]
@@ -827,6 +848,10 @@ case "$cmd" in
   qa-create-diagnostics-bundle)
     shift
     qa_create_diagnostics_bundle "$@"
+    ;;
+  qa-create-recovery-import-fixture)
+    shift
+    qa_create_recovery_import_fixture "$@"
     ;;
   qa-smoke-data-tools)
     qa_smoke_data_tools "${2:-}"

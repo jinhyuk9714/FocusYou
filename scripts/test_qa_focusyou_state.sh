@@ -144,15 +144,26 @@ action = command["action"]
 output_path = os.environ.get("QA_FAKE_COMMAND_OUTPUT_PATH", "")
 message = f"fake_{action}"
 details = None
+command_log = os.environ.get("QA_FAKE_COMMAND_LOG")
+if command_log:
+    with open(command_log, "a", encoding="utf-8") as handle:
+        handle.write(json.dumps(command, sort_keys=True) + "\n")
+
 if action == "create_data_backup":
     output_path = os.environ.get("QA_FAKE_BACKUP_OUTPUT_PATH", output_path)
 elif action == "create_diagnostics_bundle":
     output_path = os.environ.get("QA_FAKE_DIAGNOSTICS_OUTPUT_PATH", output_path)
+elif action == "create_recovery_import_fixture_backup":
+    output_path = os.environ.get("QA_FAKE_FIXTURE_BACKUP_OUTPUT_PATH", output_path)
 elif action in ("preview_data_import", "validate_data_import"):
     output_path = ""
     details = json.loads(os.environ.get("QA_FAKE_IMPORT_DETAILS", "{}"))
 
-if action in ("create_data_backup", "create_diagnostics_bundle") and not output_path:
+if action in (
+    "create_data_backup",
+    "create_diagnostics_bundle",
+    "create_recovery_import_fixture_backup",
+) and not output_path:
     raise SystemExit("missing fake command output path")
 
 if os.environ.get("QA_FAKE_ESCAPE_OUTPUT_SLASHES") == "1":
@@ -241,6 +252,14 @@ PATH="$fake_bin:$PATH" \
 run_success "qa create diagnostics bundle handles spaced output path" \
   "$QA_SCRIPT" qa-create-diagnostics-bundle "$TMP_DIR/QA Destination"
 
+fixture_backup="$TMP_DIR/Generated Output/Fixture/FocusYouBackup-20260505-050607"
+make_backup_fixture "$fixture_backup"
+QA_FAKE_DEFAULTS_DIR="$fake_defaults_dir" \
+QA_FAKE_COMMAND_OUTPUT_PATH="$fixture_backup" \
+PATH="$fake_bin:$PATH" \
+run_success "qa create recovery import fixture handles spaced output path" \
+  "$QA_SCRIPT" qa-create-recovery-import-fixture "$TMP_DIR/QA Destination"
+
 escaped_backup="$TMP_DIR/Escaped Output/FocusYouBackup-20260505-050607"
 make_backup_fixture "$escaped_backup"
 QA_FAKE_DEFAULTS_DIR="$fake_defaults_dir" \
@@ -276,12 +295,31 @@ run_success "qa validate data import handles history flags" \
   "$QA_SCRIPT" qa-validate-data-import "$valid_backup" --include-sessions --include-badges
 
 recovery_backup="$TMP_DIR/Generated Output/Recovery/FocusYouBackup-20260505-070809"
+recovery_command_log="$TMP_DIR/recovery command log.jsonl"
 make_backup_fixture "$recovery_backup"
 QA_FAKE_DEFAULTS_DIR="$fake_defaults_dir" \
-QA_FAKE_BACKUP_OUTPUT_PATH="$recovery_backup" \
+QA_FAKE_FIXTURE_BACKUP_OUTPUT_PATH="$recovery_backup" \
 QA_FAKE_IMPORT_DETAILS="$import_details" \
+QA_FAKE_COMMAND_LOG="$recovery_command_log" \
 PATH="$fake_bin:$PATH" \
-run_success "qa smoke recovery import creates backup and dry-runs import" \
+run_success "qa smoke recovery import creates fixture backup and dry-runs import" \
   "$QA_SCRIPT" qa-smoke-recovery-import "$TMP_DIR/QA Destination"
+
+if ! grep -F '"action": "create_recovery_import_fixture_backup"' "$recovery_command_log" >/dev/null; then
+  fail "qa smoke recovery import did not create a fixture backup"
+fi
+
+if grep -F '"action": "create_data_backup"' "$recovery_command_log" >/dev/null; then
+  fail "qa smoke recovery import should not depend on current app data backup"
+fi
+
+if [ "$(grep -cF '"action": "validate_data_import"' "$recovery_command_log")" -ne 2 ]; then
+  fail "qa smoke recovery import should run default and history dry-run validation"
+fi
+
+if ! grep -F '"includeBadges": true' "$recovery_command_log" >/dev/null ||
+   ! grep -F '"includeFocusSessions": true' "$recovery_command_log" >/dev/null; then
+  fail "qa smoke recovery import should run history dry-run with sessions and badges"
+fi
 
 echo "PASS: qa_focusyou_state data tool tests"

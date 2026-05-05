@@ -10,6 +10,7 @@ struct QAAutomationCommand: Decodable, Equatable {
         case resetToIdle = "reset_to_idle"
         case createDataBackup = "create_data_backup"
         case createDiagnosticsBundle = "create_diagnostics_bundle"
+        case createRecoveryImportFixtureBackup = "create_recovery_import_fixture_backup"
         case previewDataImport = "preview_data_import"
         case validateDataImport = "validate_data_import"
     }
@@ -79,6 +80,7 @@ private enum QAAutomationDataToolServiceError: Error {
 struct QAAutomationDataToolServices: @unchecked Sendable {
     let createBackup: (URL) throws -> URL
     let createDiagnosticsBundle: (URL) throws -> URL
+    let createRecoveryImportFixtureBackup: (URL) throws -> URL
     let previewDataImport: (URL) throws -> DataStoreRecoveryImportPreview
     let validateDataImport: (URL, DataStoreRecoveryImportSelection) throws -> DataStoreRecoveryImportResult
 
@@ -87,6 +89,9 @@ struct QAAutomationDataToolServices: @unchecked Sendable {
             throw QAAutomationDataToolServiceError.unexpectedCall
         },
         createDiagnosticsBundle: @escaping (URL) throws -> URL = { _ in
+            throw QAAutomationDataToolServiceError.unexpectedCall
+        },
+        createRecoveryImportFixtureBackup: @escaping (URL) throws -> URL = { _ in
             throw QAAutomationDataToolServiceError.unexpectedCall
         },
         previewDataImport: @escaping (URL) throws -> DataStoreRecoveryImportPreview = { _ in
@@ -98,6 +103,7 @@ struct QAAutomationDataToolServices: @unchecked Sendable {
     ) {
         self.createBackup = createBackup
         self.createDiagnosticsBundle = createDiagnosticsBundle
+        self.createRecoveryImportFixtureBackup = createRecoveryImportFixtureBackup
         self.previewDataImport = previewDataImport
         self.validateDataImport = validateDataImport
     }
@@ -114,6 +120,11 @@ struct QAAutomationDataToolServices: @unchecked Sendable {
                 try SupportDiagnosticsBundleService.createBundle(
                     destinationDirectoryURL: destinationURL
                 ).bundleDirectoryURL
+            },
+            createRecoveryImportFixtureBackup: { destinationURL in
+                try QAAutomationRecoveryImportFixtureBackupService.createBackup(
+                    destinationDirectoryURL: destinationURL
+                )
             },
             previewDataImport: { backupURL in
                 try DataStoreRecoveryImportService.previewImport(at: backupURL)
@@ -142,6 +153,206 @@ struct QAAutomationDataToolServices: @unchecked Sendable {
             Badge.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
+    }
+}
+
+private struct QAAutomationFixtureBackupManifest: Encodable {
+    struct Diagnostics: Encodable {
+        let supportDirectoryExists: Bool
+        let files: [File]
+    }
+
+    struct File: Encodable {
+        let relativePath: String
+        let exists: Bool
+        let isRegularFile: Bool
+        let isReadable: Bool
+    }
+
+    let createdAt: Date
+    let supportDirectoryPath: String
+    let copiedFiles: [String]
+    let diagnostics: Diagnostics
+}
+
+@MainActor
+private enum QAAutomationRecoveryImportFixtureBackupService {
+    static func createBackup(
+        destinationDirectoryURL: URL,
+        fileManager: FileManager = .default,
+        now: Date = Date()
+    ) throws -> URL {
+        let backupDirectoryURL = try nextBackupDirectoryURL(
+            in: destinationDirectoryURL,
+            fileManager: fileManager,
+            now: now
+        )
+        try fileManager.createDirectory(
+            at: backupDirectoryURL,
+            withIntermediateDirectories: true
+        )
+
+        let storeURL = backupDirectoryURL.appendingPathComponent("default.store")
+        let container = try ModelContainer(
+            for: BlockProfile.self,
+            BlockedSite.self,
+            BlockedApp.self,
+            FocusSession.self,
+            BlockSchedule.self,
+            Badge.self,
+            configurations: ModelConfiguration(url: storeURL)
+        )
+        let context = ModelContext(container)
+        insertFixtureData(into: context, now: now)
+        try context.save()
+
+        let manifestURL = backupDirectoryURL.appendingPathComponent("diagnostics.json")
+        let manifest = QAAutomationFixtureBackupManifest(
+            createdAt: now,
+            supportDirectoryPath: backupDirectoryURL.path,
+            copiedFiles: storeFileNames(in: backupDirectoryURL, fileManager: fileManager),
+            diagnostics: QAAutomationFixtureBackupManifest.Diagnostics(
+                supportDirectoryExists: true,
+                files: [
+                    QAAutomationFixtureBackupManifest.File(
+                        relativePath: "default.store",
+                        exists: true,
+                        isRegularFile: true,
+                        isReadable: true
+                    ),
+                ]
+            )
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(manifest)
+        try data.write(to: manifestURL, options: .atomic)
+
+        return backupDirectoryURL
+    }
+
+    private static func insertFixtureData(
+        into context: ModelContext,
+        now: Date
+    ) {
+        let baseDate = Date(timeIntervalSince1970: 1_704_000_000)
+
+        let profile = BlockProfile(
+            name: "QA Recovery Import Fixture",
+            icon: "shippingbox.fill",
+            color: "#2A9D8F"
+        )
+        profile.timerMode = "pomodoro"
+        profile.focusDuration = 25 * 60
+        profile.breakDuration = 5 * 60
+        profile.longBreakDuration = 15 * 60
+        profile.pomodoroCount = 4
+        profile.isDefault = false
+        profile.createdAt = baseDate
+        profile.blocklistMode = "blocklist"
+        profile.cancelIntensity = 1
+        profile.cancelLockoutMinutes = 10
+
+        let site = BlockedSite(domain: "qa-focusyou.example", category: "QA")
+        site.createdAt = baseDate.addingTimeInterval(1)
+        site.isEnabled = true
+        site.isKeywordPattern = false
+        site.profile = profile
+
+        let app = BlockedApp(
+            bundleId: "com.focusyou.qa.fixture",
+            name: "QA Fixture App",
+            category: "QA"
+        )
+        app.createdAt = baseDate.addingTimeInterval(2)
+        app.isEnabled = true
+        app.profile = profile
+
+        let schedule = BlockSchedule(
+            name: "QA Fixture Schedule",
+            weekdays: "2,3,4,5,6",
+            startMinuteOfDay: 540,
+            endMinuteOfDay: 600
+        )
+        schedule.createdAt = baseDate.addingTimeInterval(3)
+        schedule.isEnabled = true
+        schedule.profile = profile
+
+        let session = FocusSession(timerMode: "free", plannedDuration: 25 * 60)
+        session.profileName = profile.name
+        session.startedAt = baseDate.addingTimeInterval(3_600)
+        session.endedAt = baseDate.addingTimeInterval(5_100)
+        session.actualDuration = 25 * 60
+        session.overflowDuration = 0
+        session.sessionType = "focus"
+        session.wasCompleted = true
+        session.intention = "QA fixture intention"
+        session.retrospectEmoji = "checkmark"
+        session.retrospectText = "QA fixture retrospect"
+        session.retrospectRating = 5
+        session.calendarEventID = "qa-fixture-calendar-event-id"
+
+        let badge = Badge(
+            milestoneID: "qa_fixture_badge",
+            title: "QA Fixture Badge",
+            emoji: "checkmark.seal.fill",
+            desc: "Synthetic QA recovery import fixture"
+        )
+        badge.achievedAt = now
+
+        context.insert(profile)
+        context.insert(site)
+        context.insert(app)
+        context.insert(schedule)
+        context.insert(session)
+        context.insert(badge)
+    }
+
+    private static func nextBackupDirectoryURL(
+        in destinationDirectoryURL: URL,
+        fileManager: FileManager,
+        now: Date
+    ) throws -> URL {
+        try fileManager.createDirectory(
+            at: destinationDirectoryURL,
+            withIntermediateDirectories: true
+        )
+
+        let baseName = "FocusYouBackup-\(filenameTimestamp(from: now))"
+        var candidate = destinationDirectoryURL.appendingPathComponent(
+            baseName,
+            isDirectory: true
+        )
+        var suffix = 2
+        while fileManager.fileExists(atPath: candidate.path) {
+            candidate = destinationDirectoryURL.appendingPathComponent(
+                "\(baseName)-\(suffix)",
+                isDirectory: true
+            )
+            suffix += 1
+        }
+        return candidate
+    }
+
+    private static func storeFileNames(
+        in backupDirectoryURL: URL,
+        fileManager: FileManager
+    ) -> [String] {
+        ["default.store", "default.store-shm", "default.store-wal"].filter {
+            fileManager.fileExists(
+                atPath: backupDirectoryURL.appendingPathComponent($0).path
+            )
+        }
+    }
+
+    private static func filenameTimestamp(from date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        return formatter.string(from: date)
     }
 }
 
@@ -202,6 +413,32 @@ enum QAAutomationDataToolExecutor {
                     id: command.id,
                     status: "error",
                     message: "failed_to_create_diagnostics_bundle",
+                    handledAt: now.timeIntervalSince1970
+                )
+            }
+
+        case .createRecoveryImportFixtureBackup:
+            guard let destinationURL = destinationURL(
+                from: command.destinationPath,
+                fileManager: fileManager
+            ) else {
+                return invalidDestinationResult(command: command, now: now)
+            }
+
+            do {
+                let outputURL = try services.createRecoveryImportFixtureBackup(destinationURL)
+                return QAAutomationCommandResult(
+                    id: command.id,
+                    status: "ok",
+                    message: "created_recovery_import_fixture_backup",
+                    handledAt: now.timeIntervalSince1970,
+                    outputPath: outputURL.path
+                )
+            } catch {
+                return QAAutomationCommandResult(
+                    id: command.id,
+                    status: "error",
+                    message: "failed_to_create_recovery_import_fixture_backup",
                     handledAt: now.timeIntervalSince1970
                 )
             }
@@ -566,7 +803,11 @@ final class QAAutomationController {
                 handledAt: Date().timeIntervalSince1970
             )
 
-        case .createDataBackup, .createDiagnosticsBundle, .previewDataImport, .validateDataImport:
+        case .createDataBackup,
+             .createDiagnosticsBundle,
+             .createRecoveryImportFixtureBackup,
+             .previewDataImport,
+             .validateDataImport:
             return QAAutomationCommandResult(
                 id: command.id,
                 status: "error",

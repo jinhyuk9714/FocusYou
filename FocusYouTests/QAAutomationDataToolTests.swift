@@ -88,31 +88,106 @@ struct QAAutomationDataToolTests {
         #expect(result.outputPath == output.path)
     }
 
+    @Test("create_recovery_import_fixture_backup returns generated output path")
+    func createRecoveryImportFixtureBackupReturnsOutputPath() throws {
+        let destination = try makeTemporaryDirectory()
+            .appendingPathComponent("QA Destination", isDirectory: true)
+        let output = destination
+            .appendingPathComponent("FocusYouBackup-20260505-010203", isDirectory: true)
+        var receivedDestination: URL?
+
+        let services = QAAutomationDataToolServices(
+            createRecoveryImportFixtureBackup: { url in
+                receivedDestination = url
+                return output
+            }
+        )
+        let command = QAAutomationCommand(
+            id: "fixture-backup-command",
+            action: .createRecoveryImportFixtureBackup,
+            destinationPath: destination.path
+        )
+
+        let result = try #require(
+            QAAutomationDataToolExecutor.execute(
+                command: command,
+                services: services,
+                now: fixedDate
+            )
+        )
+
+        #expect(receivedDestination == destination)
+        #expect(result.id == "fixture-backup-command")
+        #expect(result.status == "ok")
+        #expect(result.message == "created_recovery_import_fixture_backup")
+        #expect(result.outputPath == output.path)
+    }
+
     @Test("missing or blank destination returns invalid destination")
     func missingOrBlankDestinationReturnsInvalidDestination() throws {
         let services = QAAutomationDataToolServices.noop
 
-        for destinationPath in [nil, "", "   "] {
-            let command = QAAutomationCommand(
-                id: "invalid-command",
-                action: .createDataBackup,
-                durationSeconds: nil,
-                domain: nil,
-                destinationPath: destinationPath
-            )
-
-            let result = try #require(
-                QAAutomationDataToolExecutor.execute(
-                    command: command,
-                    services: services,
-                    now: fixedDate
+        for action in [
+            QAAutomationCommand.Action.createDataBackup,
+            .createRecoveryImportFixtureBackup,
+        ] {
+            for destinationPath in [nil, "", "   "] {
+                let command = QAAutomationCommand(
+                    id: "invalid-command",
+                    action: action,
+                    durationSeconds: nil,
+                    domain: nil,
+                    destinationPath: destinationPath
                 )
-            )
 
-            #expect(result.status == "error")
-            #expect(result.message == "invalid_destination")
-            #expect(result.outputPath == nil)
+                let result = try #require(
+                    QAAutomationDataToolExecutor.execute(
+                        command: command,
+                        services: services,
+                        now: fixedDate
+                    )
+                )
+
+                #expect(result.status == "error")
+                #expect(result.message == "invalid_destination")
+                #expect(result.outputPath == nil)
+            }
         }
+    }
+
+    @Test("file fixture destination returns invalid destination without calling services")
+    func fileFixtureDestinationReturnsInvalidDestination() throws {
+        let fileURL = try makeTemporaryDirectory()
+            .appendingPathComponent("not-a-directory.txt")
+        try "not a directory".write(to: fileURL, atomically: true, encoding: .utf8)
+        var didCallService = false
+        let services = QAAutomationDataToolServices(
+            createRecoveryImportFixtureBackup: { _ in
+                didCallService = true
+                throw StubError.unexpectedServiceCall
+            }
+        )
+
+        let command = QAAutomationCommand(
+            id: "file-fixture-destination",
+            action: .createRecoveryImportFixtureBackup,
+            durationSeconds: nil,
+            domain: nil,
+            destinationPath: fileURL.path
+        )
+
+        let result = try #require(
+            QAAutomationDataToolExecutor.execute(
+                command: command,
+                services: services,
+                now: fixedDate
+            )
+        )
+
+        #expect(!didCallService)
+        #expect(result.status == "error")
+        #expect(result.message == "invalid_destination")
+        #expect(result.outputPath == nil)
     }
 
     @Test("file destination returns invalid destination without calling services")
@@ -406,6 +481,94 @@ struct QAAutomationDataToolTests {
         #expect(try currentContext.fetch(FetchDescriptor<BlockProfile>()).isEmpty)
         #expect(try currentContext.fetch(FetchDescriptor<FocusSession>()).isEmpty)
         #expect(try currentContext.fetch(FetchDescriptor<Badge>()).isEmpty)
+    }
+
+    @Test("create_recovery_import_fixture_backup live service creates importable fixture")
+    func createRecoveryImportFixtureBackupLiveServiceCreatesImportableFixture() throws {
+        let destination = try makeTemporaryDirectory()
+            .appendingPathComponent("Fixture Destination", isDirectory: true)
+        let command = QAAutomationCommand(
+            id: "live-fixture-backup",
+            action: .createRecoveryImportFixtureBackup,
+            destinationPath: destination.path
+        )
+
+        let fixtureResult = try #require(
+            QAAutomationDataToolExecutor.execute(
+                command: command,
+                services: .live,
+                now: fixedDate
+            )
+        )
+        let fixturePath = try #require(fixtureResult.outputPath)
+        let fixtureURL = URL(fileURLWithPath: fixturePath, isDirectory: true)
+
+        #expect(fixtureResult.status == "ok")
+        #expect(FileManager.default.fileExists(atPath: fixtureURL.path))
+        #expect(FileManager.default.fileExists(
+            atPath: fixtureURL.appendingPathComponent("default.store").path
+        ))
+        #expect(FileManager.default.fileExists(
+            atPath: fixtureURL.appendingPathComponent("diagnostics.json").path
+        ))
+
+        let preview = try DataStoreRecoveryImportService.previewImport(at: fixtureURL)
+        #expect(preview.profileCandidates.count == 1)
+        #expect(preview.profileCandidates.first?.siteCount == 1)
+        #expect(preview.profileCandidates.first?.appCount == 1)
+        #expect(preview.profileCandidates.first?.scheduleCount == 1)
+        #expect(preview.skippedFocusSessionCount == 1)
+        #expect(preview.skippedBadgeCount == 1)
+
+        let defaultDryRun = try #require(
+            QAAutomationDataToolExecutor.execute(
+                command: QAAutomationCommand(
+                    id: "validate-fixture-default",
+                    action: .validateDataImport,
+                    backupPath: fixtureURL.path
+                ),
+                services: .live,
+                now: fixedDate
+            )
+        )
+        #expect(defaultDryRun.details?["importedProfileCount"] == 1)
+        #expect(defaultDryRun.details?["importedFocusSessionCount"] == 0)
+        #expect(defaultDryRun.details?["importedBadgeCount"] == 0)
+        #expect(defaultDryRun.details?["skippedFocusSessionCount"] == 1)
+        #expect(defaultDryRun.details?["skippedBadgeCount"] == 1)
+
+        let historyDryRun = try #require(
+            QAAutomationDataToolExecutor.execute(
+                command: QAAutomationCommand(
+                    id: "validate-fixture-history",
+                    action: .validateDataImport,
+                    backupPath: fixtureURL.path,
+                    includeFocusSessions: true,
+                    includeBadges: true
+                ),
+                services: .live,
+                now: fixedDate
+            )
+        )
+        #expect(historyDryRun.details?["importedFocusSessionCount"] == 1)
+        #expect(historyDryRun.details?["importedBadgeCount"] == 1)
+
+        let targetContainer = try makeInMemoryContainer()
+        let targetContext = ModelContext(targetContainer)
+        let selectedIDs = Set(preview.profileCandidates.map { $0.id })
+        _ = try DataStoreRecoveryImportService.importSelectedCandidates(
+            from: fixtureURL,
+            selection: DataStoreRecoveryImportSelection(
+                selectedCandidateIDs: selectedIDs,
+                includeFocusSessions: true,
+                includeBadges: true
+            ),
+            into: targetContext
+        )
+
+        let importedSessions = try targetContext.fetch(FetchDescriptor<FocusSession>())
+        #expect(importedSessions.count == 1)
+        #expect(importedSessions.first?.calendarEventID == nil)
     }
 
     private var fixedDate: Date {
