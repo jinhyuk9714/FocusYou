@@ -18,6 +18,8 @@ struct HealthCheckView: View {
     @State private var selectedImportBackupURL: URL?
     @State private var dataStoreImportPreview: DataStoreRecoveryImportPreview?
     @State private var selectedImportCandidateIDs: Set<String> = []
+    @State private var includeImportFocusSessions = false
+    @State private var includeImportBadges = false
     @State private var isImportPreviewPresented = false
 
     private let logger = Logger(
@@ -51,6 +53,8 @@ struct HealthCheckView: View {
                 DataStoreRecoveryImportPreviewSheet(
                     preview: dataStoreImportPreview,
                     selectedCandidateIDs: $selectedImportCandidateIDs,
+                    includeFocusSessions: $includeImportFocusSessions,
+                    includeBadges: $includeImportBadges,
                     isImporting: dataToolState.status?.action == .importSettings && dataToolState.isRunning,
                     onCancel: clearImportPreview,
                     onImport: importSelectedBackupCandidates
@@ -346,6 +350,8 @@ struct HealthCheckView: View {
             selectedImportBackupURL = backupURL
             dataStoreImportPreview = preview
             selectedImportCandidateIDs = Set(preview.profileCandidates.map { $0.id })
+            includeImportFocusSessions = false
+            includeImportBadges = false
             dataToolState.cancel()
             isImportPreviewPresented = true
         } catch {
@@ -367,7 +373,11 @@ struct HealthCheckView: View {
         do {
             let result = try DataStoreRecoveryImportService.importSelectedCandidates(
                 from: selectedImportBackupURL,
-                selectedCandidateIDs: selectedImportCandidateIDs,
+                selection: DataStoreRecoveryImportSelection(
+                    selectedCandidateIDs: selectedImportCandidateIDs,
+                    includeFocusSessions: includeImportFocusSessions,
+                    includeBadges: includeImportBadges
+                ),
                 into: modelContext
             )
             dataToolState.succeed(
@@ -388,6 +398,8 @@ struct HealthCheckView: View {
         dataStoreImportPreview = nil
         selectedImportBackupURL = nil
         selectedImportCandidateIDs = []
+        includeImportFocusSessions = false
+        includeImportBadges = false
     }
 
     private func createSupportDiagnosticsBundle() {

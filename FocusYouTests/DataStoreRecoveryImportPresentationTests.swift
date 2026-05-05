@@ -34,17 +34,61 @@ struct DataStoreRecoveryImportPresentationTests {
             skippedBadgeCount: 5
         )
 
-        let summary = preview.selectionSummary(selectedCandidateIDs: ["profile"])
+        let summary = preview.selectionSummary(
+            selection: DataStoreRecoveryImportSelection(selectedCandidateIDs: ["profile"])
+        )
 
         #expect(summary.profileCount == 1)
         #expect(summary.siteCount == 2)
         #expect(summary.appCount == 3)
         #expect(summary.scheduleCount == 1)
         #expect(summary.totalImportItemCount == 7)
+        #expect(summary.importedFocusSessionCount == 0)
+        #expect(summary.importedBadgeCount == 0)
         #expect(summary.skippedFocusSessionCount == 4)
         #expect(summary.skippedBadgeCount == 5)
+        #expect(summary.skippedSummaryText == "세션 4개와 배지 5개는 가져오지 않습니다.")
         #expect(summary.sourceSummary == "FocusYouBackup-20260505/default.store")
         #expect(summary.importSummaryText.contains("총 7개"))
+    }
+
+    @Test("selection summary includes optional sessions and badges only when selected")
+    func selectionSummaryIncludesOptionalSessionsAndBadgesOnlyWhenSelected() {
+        let profile = DataStoreRecoveryImportProfileCandidate(
+            id: "profile",
+            displayName: "Deep Work",
+            sourceName: "Deep Work",
+            isOrphanLegacyBlocks: false,
+            siteCount: 2,
+            appCount: 3,
+            scheduleCount: 1
+        )
+        let preview = DataStoreRecoveryImportPreview(
+            inspectedAt: .distantPast,
+            sourceDirectoryURL: URL(fileURLWithPath: "/tmp/FocusYouBackup-20260505"),
+            sourceStoreFileName: "default.store",
+            copiedStoreFiles: ["default.store"],
+            profileCandidates: [profile],
+            skippedFocusSessionCount: 4,
+            skippedBadgeCount: 5
+        )
+
+        let summary = preview.selectionSummary(
+            selection: DataStoreRecoveryImportSelection(
+                selectedCandidateIDs: ["profile"],
+                includeFocusSessions: true,
+                includeBadges: true
+            )
+        )
+
+        #expect(summary.importedFocusSessionCount == 4)
+        #expect(summary.importedBadgeCount == 5)
+        #expect(summary.skippedFocusSessionCount == 0)
+        #expect(summary.skippedBadgeCount == 0)
+        #expect(summary.totalImportItemCount == 16)
+        #expect(summary.importSummaryText.contains("세션 4개"))
+        #expect(summary.importSummaryText.contains("배지 5개"))
+        #expect(summary.skippedSummaryText == "세션 기록과 배지도 새 항목으로 가져옵니다. 중복 항목은 저장 시 건너뜁니다.")
     }
 
     @Test("selection summary describes empty partial and full selections")
@@ -77,9 +121,15 @@ struct DataStoreRecoveryImportPresentationTests {
             skippedBadgeCount: 5
         )
 
-        let empty = preview.selectionSummary(selectedCandidateIDs: [])
-        let partial = preview.selectionSummary(selectedCandidateIDs: ["profile"])
-        let full = preview.selectionSummary(selectedCandidateIDs: ["profile", "orphan"])
+        let empty = preview.selectionSummary(
+            selection: DataStoreRecoveryImportSelection(selectedCandidateIDs: [])
+        )
+        let partial = preview.selectionSummary(
+            selection: DataStoreRecoveryImportSelection(selectedCandidateIDs: ["profile"])
+        )
+        let full = preview.selectionSummary(
+            selection: DataStoreRecoveryImportSelection(selectedCandidateIDs: ["profile", "orphan"])
+        )
 
         #expect(empty.selectedCandidateCount == 0)
         #expect(empty.totalCandidateCount == 2)

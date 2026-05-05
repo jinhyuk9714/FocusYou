@@ -33,17 +33,35 @@ struct DataStoreRecoveryImportPreview: Equatable {
     }
 }
 
+struct DataStoreRecoveryImportSelection: Equatable {
+    let selectedCandidateIDs: Set<String>
+    let includeFocusSessions: Bool
+    let includeBadges: Bool
+
+    init(
+        selectedCandidateIDs: Set<String>,
+        includeFocusSessions: Bool = false,
+        includeBadges: Bool = false
+    ) {
+        self.selectedCandidateIDs = selectedCandidateIDs
+        self.includeFocusSessions = includeFocusSessions
+        self.includeBadges = includeBadges
+    }
+}
+
 struct DataStoreRecoveryImportResult: Equatable {
     let importedProfileCount: Int
     let importedSiteCount: Int
     let importedAppCount: Int
     let importedScheduleCount: Int
+    let importedFocusSessionCount: Int
+    let importedBadgeCount: Int
     let skippedFocusSessionCount: Int
     let skippedBadgeCount: Int
 
     var statusSummary: String {
         String(
-            localized: "가져오기 완료: 프로필 \(importedProfileCount)개, 사이트 \(importedSiteCount)개, 앱 \(importedAppCount)개, 스케줄 \(importedScheduleCount)개. 세션 \(skippedFocusSessionCount)개와 배지 \(skippedBadgeCount)개는 건너뜀."
+            localized: "가져오기 완료: 프로필 \(importedProfileCount)개, 사이트 \(importedSiteCount)개, 앱 \(importedAppCount)개, 스케줄 \(importedScheduleCount)개, 세션 \(importedFocusSessionCount)개, 배지 \(importedBadgeCount)개. 세션 \(skippedFocusSessionCount)개와 배지 \(skippedBadgeCount)개는 건너뜀."
         )
     }
 }
@@ -106,7 +124,31 @@ enum DataStoreRecoveryImportService {
             try context.save()
         }
     ) throws -> DataStoreRecoveryImportResult {
-        guard !selectedCandidateIDs.isEmpty else {
+        try importSelectedCandidates(
+            from: backupDirectoryURL,
+            selection: DataStoreRecoveryImportSelection(
+                selectedCandidateIDs: selectedCandidateIDs
+            ),
+            into: targetContext,
+            temporaryDirectoryURL: temporaryDirectoryURL,
+            fileManager: fileManager,
+            now: now,
+            save: save
+        )
+    }
+
+    static func importSelectedCandidates(
+        from backupDirectoryURL: URL,
+        selection: DataStoreRecoveryImportSelection,
+        into targetContext: ModelContext,
+        temporaryDirectoryURL: URL = FileManager.default.temporaryDirectory,
+        fileManager: FileManager = .default,
+        now: Date = Date(),
+        save: (ModelContext) throws -> Void = { context in
+            try context.save()
+        }
+    ) throws -> DataStoreRecoveryImportResult {
+        guard !selection.selectedCandidateIDs.isEmpty else {
             throw DataStoreRecoveryImportError.noCandidatesSelected
         }
 
@@ -118,21 +160,35 @@ enum DataStoreRecoveryImportService {
             let sourceContext = ModelContext(copiedStore.container)
             let allCandidates = try sourceCandidates(in: sourceContext)
             let selectedCandidates = allCandidates
-                .filter { selectedCandidateIDs.contains($0.candidate.id) }
+                .filter { selection.selectedCandidateIDs.contains($0.candidate.id) }
             let resolvedCandidateIDs = Set(selectedCandidates.map(\.candidate.id))
 
             guard !selectedCandidates.isEmpty,
-                  resolvedCandidateIDs == selectedCandidateIDs else {
+                  resolvedCandidateIDs == selection.selectedCandidateIDs else {
                 throw DataStoreRecoveryImportError.selectedCandidatesNotFound
             }
 
+            let sourceFocusSessions = try sourceFocusSessions(in: sourceContext)
+            let sourceBadges = try sourceBadges(in: sourceContext)
             let existingNames = try targetContext.fetch(FetchDescriptor<BlockProfile>())
                 .map(\.name)
             var usedProfileNames = Set(existingNames)
+            var existingSessionKeys = Set(
+                try targetContext.fetch(FetchDescriptor<FocusSession>())
+                    .map(FocusSessionImportKey.init)
+            )
+            var existingBadgeMilestoneIDs = Set(
+                try targetContext.fetch(FetchDescriptor<Badge>())
+                    .map(\.milestoneID)
+            )
             var importedProfileCount = 0
             var importedSiteCount = 0
             var importedAppCount = 0
             var importedScheduleCount = 0
+            var importedFocusSessionCount = 0
+            var importedBadgeCount = 0
+            var skippedFocusSessionCount = sourceFocusSessions.count
+            var skippedBadgeCount = sourceBadges.count
 
             do {
                 for sourceCandidate in selectedCandidates {
@@ -165,6 +221,37 @@ enum DataStoreRecoveryImportService {
                     }
                 }
 
+                if selection.includeFocusSessions {
+                    skippedFocusSessionCount = 0
+                    for sourceSession in sourceFocusSessions {
+                        let key = FocusSessionImportKey(session: sourceSession)
+                        guard !existingSessionKeys.contains(key) else {
+                            skippedFocusSessionCount += 1
+                            continue
+                        }
+
+                        let importedSession = copyFocusSession(sourceSession)
+                        targetContext.insert(importedSession)
+                        existingSessionKeys.insert(key)
+                        importedFocusSessionCount += 1
+                    }
+                }
+
+                if selection.includeBadges {
+                    skippedBadgeCount = 0
+                    for sourceBadge in sourceBadges {
+                        guard !existingBadgeMilestoneIDs.contains(sourceBadge.milestoneID) else {
+                            skippedBadgeCount += 1
+                            continue
+                        }
+
+                        let importedBadge = copyBadge(sourceBadge)
+                        targetContext.insert(importedBadge)
+                        existingBadgeMilestoneIDs.insert(sourceBadge.milestoneID)
+                        importedBadgeCount += 1
+                    }
+                }
+
                 try save(targetContext)
             } catch {
                 targetContext.rollback()
@@ -176,9 +263,33 @@ enum DataStoreRecoveryImportService {
                 importedSiteCount: importedSiteCount,
                 importedAppCount: importedAppCount,
                 importedScheduleCount: importedScheduleCount,
-                skippedFocusSessionCount: try sourceContext.fetch(FetchDescriptor<FocusSession>()).count,
-                skippedBadgeCount: try sourceContext.fetch(FetchDescriptor<Badge>()).count
+                importedFocusSessionCount: importedFocusSessionCount,
+                importedBadgeCount: importedBadgeCount,
+                skippedFocusSessionCount: skippedFocusSessionCount,
+                skippedBadgeCount: skippedBadgeCount
             )
+        }
+    }
+
+    private struct FocusSessionImportKey: Hashable {
+        let timerMode: String
+        let startedAt: Date
+        let endedAt: Date?
+        let plannedDuration: Int?
+        let actualDuration: Int
+        let overflowDuration: Int
+        let sessionType: String
+        let wasCompleted: Bool
+
+        init(session: FocusSession) {
+            self.timerMode = session.timerMode
+            self.startedAt = session.startedAt
+            self.endedAt = session.endedAt
+            self.plannedDuration = session.plannedDuration
+            self.actualDuration = session.actualDuration
+            self.overflowDuration = session.overflowDuration
+            self.sessionType = session.sessionType
+            self.wasCompleted = session.wasCompleted
         }
     }
 
@@ -315,6 +426,37 @@ enum DataStoreRecoveryImportService {
         return imported
     }
 
+    private static func copyFocusSession(_ source: FocusSession) -> FocusSession {
+        let imported = FocusSession(
+            timerMode: source.timerMode,
+            plannedDuration: source.plannedDuration
+        )
+        imported.profileName = source.profileName
+        imported.startedAt = source.startedAt
+        imported.endedAt = source.endedAt
+        imported.actualDuration = source.actualDuration
+        imported.overflowDuration = source.overflowDuration
+        imported.sessionType = source.sessionType
+        imported.wasCompleted = source.wasCompleted
+        imported.intention = source.intention
+        imported.retrospectEmoji = source.retrospectEmoji
+        imported.retrospectText = source.retrospectText
+        imported.retrospectRating = source.retrospectRating
+        imported.calendarEventID = nil
+        return imported
+    }
+
+    private static func copyBadge(_ source: Badge) -> Badge {
+        let imported = Badge(
+            milestoneID: source.milestoneID,
+            title: source.title,
+            emoji: source.emoji,
+            desc: source.desc
+        )
+        imported.achievedAt = source.achievedAt
+        return imported
+    }
+
     private static func copySite(
         _ source: BlockedSite,
         profile: BlockProfile
@@ -425,5 +567,27 @@ enum DataStoreRecoveryImportService {
             }
             return $0.name < $1.name
         }
+    }
+
+    private static func sourceFocusSessions(in context: ModelContext) throws -> [FocusSession] {
+        try context.fetch(
+            FetchDescriptor<FocusSession>(
+                sortBy: [
+                    SortDescriptor(\.startedAt),
+                    SortDescriptor(\.timerMode),
+                ]
+            )
+        )
+    }
+
+    private static func sourceBadges(in context: ModelContext) throws -> [Badge] {
+        try context.fetch(
+            FetchDescriptor<Badge>(
+                sortBy: [
+                    SortDescriptor(\.achievedAt),
+                    SortDescriptor(\.milestoneID),
+                ]
+            )
+        )
     }
 }

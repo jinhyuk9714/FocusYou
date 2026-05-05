@@ -3,6 +3,8 @@ import SwiftUI
 struct DataStoreRecoveryImportPreviewSheet: View {
     let preview: DataStoreRecoveryImportPreview
     @Binding var selectedCandidateIDs: Set<String>
+    @Binding var includeFocusSessions: Bool
+    @Binding var includeBadges: Bool
     let isImporting: Bool
     let onCancel: () -> Void
     let onImport: () -> Void
@@ -10,7 +12,12 @@ struct DataStoreRecoveryImportPreviewSheet: View {
     @State private var isImportConfirmationPresented = false
 
     var body: some View {
-        let summary = preview.selectionSummary(selectedCandidateIDs: selectedCandidateIDs)
+        let selection = DataStoreRecoveryImportSelection(
+            selectedCandidateIDs: selectedCandidateIDs,
+            includeFocusSessions: includeFocusSessions,
+            includeBadges: includeBadges
+        )
+        let summary = preview.selectionSummary(selection: selection)
 
         VStack(alignment: .leading, spacing: 16) {
             Label("백업 가져오기", systemImage: "tray.and.arrow.down")
@@ -57,6 +64,35 @@ struct DataStoreRecoveryImportPreviewSheet: View {
                 }
             }
             .font(.caption)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle(isOn: $includeFocusSessions) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("세션 기록 가져오기")
+                            .font(.callout.weight(.medium))
+                        Text("백업의 세션 \(preview.skippedFocusSessionCount)개를 새 기록으로 추가합니다. 중복 세션은 저장 시 건너뜁니다.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.checkbox)
+                .disabled(isImporting || preview.skippedFocusSessionCount == 0)
+
+                Toggle(isOn: $includeBadges) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("배지 가져오기")
+                            .font(.callout.weight(.medium))
+                        Text("백업의 배지 \(preview.skippedBadgeCount)개 중 현재 없는 배지만 추가합니다.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.checkbox)
+                .disabled(isImporting || preview.skippedBadgeCount == 0)
+            }
+            .padding(10)
+            .background(Color.secondary.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
@@ -110,10 +146,10 @@ struct DataStoreRecoveryImportPreviewSheet: View {
             }
             Button("취소", role: .cancel) {}
         } message: {
-            Text("기존 데이터는 변경하지 않고 선택 항목을 새 프로필로 추가합니다. 세션 기록과 배지는 가져오지 않습니다.")
+            Text(summary.confirmationMessageText)
         }
         .padding(24)
-        .frame(minWidth: 560, minHeight: 420)
+        .frame(minWidth: 580, minHeight: 520)
     }
 
     private func selectionBinding(for id: String) -> Binding<Bool> {
