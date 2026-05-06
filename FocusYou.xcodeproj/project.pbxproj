@@ -403,6 +403,7 @@
 		7547322B6D120557BCC560EB /* ProfileBootstrapperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileBootstrapperTests.swift; sourceTree = "<group>"; };
 		758F6B2813BD5B07F87D81BD /* FocusModeObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusModeObserver.swift; sourceTree = "<group>"; };
 		761C580F156C62BB56F2ADBD /* DataStoreRecoveryImportServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataStoreRecoveryImportServiceTests.swift; sourceTree = "<group>"; };
+		77771DD6FCD1508D5DB4D7AD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		77E700A03A7F40896192E390 /* MilestoneDetectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MilestoneDetectorTests.swift; sourceTree = "<group>"; };
 		78208687DF46BF0DE037B686 /* BlockProfileModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockProfileModelTests.swift; sourceTree = "<group>"; };
 		78E592359E71D0D7E463D21B /* ProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModel.swift; sourceTree = "<group>"; };
@@ -938,6 +939,7 @@
 				0CE4E866E69609429CD95A66 /* FocusYouWidget.entitlements */,
 				41257B1164852B6DCFAA5CF1 /* FocusYouWidgetAppStore.entitlements */,
 				B0FE2AD6DA0B2F955173B52B /* FocusYouWidgetBundle.swift */,
+				77771DD6FCD1508D5DB4D7AD /* Info.plist */,
 				EB3F3CA340FDF4DC545044AE /* StreakWidget.swift */,
 				C186E7AE353A56A67555FC6A /* Resources */,
 			);
@@ -1573,6 +1575,7 @@
 				DEVELOPMENT_TEAM = 9VRNY5PMG3;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
+				EXECUTABLE_NAME = FocusYouFilter;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FocusYouNetworkExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1580,7 +1583,8 @@
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.sungjh.focusyou.network-extension";
-				PRODUCT_NAME = FocusYouFilter;
+				PRODUCT_MODULE_NAME = FocusYouFilter;
+				PRODUCT_NAME = "$(PRODUCT_BUNDLE_IDENTIFIER)";
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -1615,6 +1619,7 @@
 				DEVELOPMENT_TEAM = 9VRNY5PMG3;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
+				EXECUTABLE_NAME = FocusYouFilter;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FocusYouNetworkExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1622,7 +1627,8 @@
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.sungjh.focusyou.network-extension";
-				PRODUCT_NAME = FocusYouFilter;
+				PRODUCT_MODULE_NAME = FocusYouFilter;
+				PRODUCT_NAME = "$(PRODUCT_BUNDLE_IDENTIFIER)";
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -1632,7 +1638,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = FocusYou/FocusYouAppStore.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Distribution";
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_APP_SANDBOX = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
@@ -1672,10 +1677,8 @@
 				CODE_SIGN_ENTITLEMENTS = FocusYouWidget/FocusYouWidget.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_APP_SANDBOX = NO;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Focus You Widget";
-				INFOPLIST_KEY_LSUIElement = "";
-				INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FocusYouWidget/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -1802,10 +1805,8 @@
 				CODE_SIGN_ENTITLEMENTS = FocusYouWidget/FocusYouWidget.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_APP_SANDBOX = NO;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Focus You Widget";
-				INFOPLIST_KEY_LSUIElement = "";
-				INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FocusYouWidget/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -1895,12 +1896,13 @@
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = YES;
 				CODE_SIGN_ENTITLEMENTS = FocusYouNetworkExtension/FocusYouNetworkExtensionAppStore.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Distribution";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = 9VRNY5PMG3;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				EXECUTABLE_NAME = FocusYouFilter;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = FocusYouNetworkExtension/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1908,7 +1910,8 @@
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.sungjh.focusyou.network-extension";
-				PRODUCT_NAME = FocusYouFilter;
+				PRODUCT_MODULE_NAME = FocusYouFilter;
+				PRODUCT_NAME = "$(PRODUCT_BUNDLE_IDENTIFIER)";
 				SDKROOT = macosx;
 			};
 			name = AppStore;
@@ -1932,13 +1935,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = FocusYouWidget/FocusYouWidgetAppStore.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Distribution";
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_APP_SANDBOX = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Focus You Widget";
-				INFOPLIST_KEY_LSUIElement = "";
-				INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FocusYouWidget/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

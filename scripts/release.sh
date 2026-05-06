@@ -173,10 +173,11 @@ if [[ "$SKIP_SIGN" -eq 0 ]]; then
   WIDGET_PROFILE="$(find_provisioning_profile "$WIDGET_PROFILE_NAME")" || fail "Provisioning profile not found: $WIDGET_PROFILE_NAME"
 
   WIDGET_PATH="$APP_PATH/Contents/PlugIns/FocusYouWidget.appex"
-  NETWORK_EXTENSION_PATH="$APP_PATH/Contents/Library/SystemExtensions/FocusYouFilter.systemextension"
+  SYSTEM_EXTENSIONS_DIR="$APP_PATH/Contents/Library/SystemExtensions"
+  NETWORK_EXTENSION_PATH="$(find "$SYSTEM_EXTENSIONS_DIR" -maxdepth 1 -name '*.systemextension' -print -quit 2>/dev/null || true)"
 
   [[ -d "$WIDGET_PATH" ]] || fail "Widget bundle not found at $WIDGET_PATH"
-  [[ -d "$NETWORK_EXTENSION_PATH" ]] || fail "System extension bundle not found at $NETWORK_EXTENSION_PATH"
+  [[ -n "$NETWORK_EXTENSION_PATH" && -d "$NETWORK_EXTENSION_PATH" ]] || fail "System extension bundle not found in $SYSTEM_EXTENSIONS_DIR"
 
   ditto --noextattr --norsrc "$APP_PROFILE" "$APP_PATH/Contents/embedded.provisionprofile"
   ditto --noextattr --norsrc "$WIDGET_PROFILE" "$WIDGET_PATH/Contents/embedded.provisionprofile"

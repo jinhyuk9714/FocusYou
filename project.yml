@@ -52,7 +52,6 @@ targets:
         AppStore:
           ENABLE_APP_SANDBOX: YES
           CODE_SIGN_ENTITLEMENTS: FocusYou/FocusYouAppStore.entitlements
-          CODE_SIGN_IDENTITY: "Apple Distribution"
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) APPSTORE"
     dependencies:
       - sdk: AppIntents.framework
@@ -70,7 +69,9 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.sungjh.focusyou.network-extension
-        PRODUCT_NAME: "FocusYouFilter"
+        PRODUCT_NAME: "$(PRODUCT_BUNDLE_IDENTIFIER)"
+        PRODUCT_MODULE_NAME: "FocusYouFilter"
+        EXECUTABLE_NAME: "FocusYouFilter"
         INFOPLIST_FILE: FocusYouNetworkExtension/Info.plist
         GENERATE_INFOPLIST_FILE: YES
         CODE_SIGN_ENTITLEMENTS: FocusYouNetworkExtension/FocusYouNetworkExtension.entitlements
@@ -85,7 +86,6 @@ targets:
         AppStore:
           ENABLE_APP_SANDBOX: YES
           CODE_SIGN_ENTITLEMENTS: FocusYouNetworkExtension/FocusYouNetworkExtensionAppStore.entitlements
-          CODE_SIGN_IDENTITY: "Apple Distribution"
     dependencies:
       - sdk: AppIntents.framework
       - sdk: NetworkExtension.framework
@@ -101,17 +101,14 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.sungjh.focusyou.widget
         PRODUCT_NAME: "FocusYouWidget"
         SWIFT_EMIT_LOC_STRINGS: YES
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: "Focus You Widget"
-        INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: FocusYouWidget/Info.plist
         ENABLE_APP_SANDBOX: NO
         CODE_SIGN_ENTITLEMENTS: FocusYouWidget/FocusYouWidget.entitlements
-        INFOPLIST_KEY_LSUIElement: ""
       configs:
         AppStore:
           ENABLE_APP_SANDBOX: YES
           CODE_SIGN_ENTITLEMENTS: FocusYouWidget/FocusYouWidgetAppStore.entitlements
-          CODE_SIGN_IDENTITY: "Apple Distribution"
     dependencies:
       - sdk: WidgetKit.framework
       - sdk: SwiftUI.framework

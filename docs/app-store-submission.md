@@ -34,8 +34,11 @@ After a signed archive/export, inspect the shipped entitlements:
 ```bash
 codesign -d --entitlements :- "path/to/Focus You.app"
 codesign -d --entitlements :- "path/to/Focus You.app/Contents/PlugIns/FocusYouWidget.appex"
-codesign -d --entitlements :- "path/to/Focus You.app/Contents/Library/SystemExtensions/FocusYouFilter.systemextension"
+codesign -d --entitlements :- "path/to/Focus You.app/Contents/Library/SystemExtensions/com.sungjh.focusyou.network-extension.systemextension"
 ```
+
+Direct DMG packaging also discovers the embedded `.systemextension` dynamically so the
+App Store-compliant bundle file name is shared by both distribution paths.
 
 Expected App Store traits:
 
@@ -71,6 +74,9 @@ This path requires Apple Distribution signing plus App Store provisioning profil
 - `com.sungjh.focusyou`
 - `com.sungjh.focusyou.network-extension`
 - `com.sungjh.focusyou.widget`
+
+Before selecting a build for review, keep the App Store Connect macOS version
+aligned with `MARKETING_VERSION` from `project.yml`.
 
 ## App Review Notes Template
 
